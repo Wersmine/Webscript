@@ -1,5 +1,5 @@
 -- ============================================
--- Полный скрипт: Main + Rage + Teleport
+-- Полный скрипт: Main + Rage + Games(Doors) + Teleport
 -- Автор: Webs_My
 -- ============================================
 
@@ -87,9 +87,6 @@ MainTab:CreateSlider({
     Callback = function(v) jumpPower = v; applyStats(LocalPlayer.Character) end
 })
 
--- ============================================
--- NOCLIP
--- ============================================
 MainTab:CreateSection("Noclip")
 
 MainTab:CreateToggle({
@@ -117,9 +114,6 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- ============================================
--- ПОЛЁТ
--- ============================================
 MainTab:CreateSection("Полёт")
 
 local flyEnabled = false
@@ -211,7 +205,6 @@ end)
 -- ============================================
 local RageTab = Window:CreateTab("Rage", 4483362458)
 
--- ============ AIMBOT ============
 RageTab:CreateSection("Aimbot")
 
 local aimPlayers = false
@@ -365,7 +358,6 @@ RunService:BindToRenderStep("AimbotCamera", Enum.RenderPriority.Camera.Value + 1
     cam.CFrame = camCF:Lerp(newCF, math.clamp(aimSmooth, 0, 1))
 end)
 
--- ============ KILL AURA ============
 RageTab:CreateSection("Kill Aura")
 
 local killAuraEnabled = false
@@ -397,7 +389,6 @@ RageTab:CreateSlider({
     Callback = function(v) killAuraDelay = v end
 })
 
--- Агрессивная Kill Aura: пробуем несколько способов
 task.spawn(function()
     while task.wait(killAuraDelay) do
         if killAuraEnabled then
@@ -412,22 +403,8 @@ task.spawn(function()
                             if hum and thp and hum.Health > 0 and isNPC(obj) then
                                 local dist = (thp.Position - hrp.Position).Magnitude
                                 if dist <= killAuraRange then
-                                    -- Способ 1: TakeDamage
                                     pcall(function() hum:TakeDamage(killAuraDmg) end)
-                                    -- Способ 2: прямое изменение Health
-                                    pcall(function()
-                                        hum.Health = math.max(0, hum.Health - killAuraDmg)
-                                    end)
-                                    -- Способ 3: если есть BreakJoints
-                                    pcall(function()
-                                        if hum.Health <= 0 then
-                                            for _, p in pairs(obj:GetDescendants()) do
-                                                if p:IsA("BasePart") then
-                                                    p:BreakJoints()
-                                                end
-                                            end
-                                        end
-                                    end)
+                                    pcall(function() hum.Health = math.max(0, hum.Health - killAuraDmg) end)
                                 end
                             end
                         end
@@ -438,31 +415,25 @@ task.spawn(function()
     end
 end)
 
--- ============ БЕСКОНЕЧНОЕ HP ============
 RageTab:CreateSection("Бесконечное HP")
 
 local infHPEnabled = false
 local deathSoundNames = {"death", "die", "hurt", "hit", "damage", "scream", "gasp", "pain"}
 
 local function stopDeathEffects()
-    -- SoundService
     for _, s in pairs(game:GetService("SoundService"):GetDescendants()) do
         if s:IsA("Sound") and s.Playing then
             local n = s.Name:lower()
-            local shouldStop = false
             for _, key in ipairs(deathSoundNames) do
-                if n:find(key) then shouldStop = true break end
+                if n:find(key) then pcall(function() s:Stop() s.Volume = 0 end) break end
             end
-            if shouldStop then pcall(function() s:Stop() s.Volume = 0 end) end
         end
     end
-    -- SoundGroups
     for _, sg in pairs(game:GetService("SoundService"):GetDescendants()) do
         if sg:IsA("SoundGroup") and sg.Volume > 0 then
             pcall(function() sg.Volume = 0 end)
         end
     end
-    -- Персонаж
     local char = LocalPlayer.Character
     if char then
         for _, s in pairs(char:GetDescendants()) do
@@ -471,7 +442,6 @@ local function stopDeathEffects()
             end
         end
     end
-    -- Lighting
     local L = game:GetService("Lighting")
     for _, e in pairs(L:GetChildren()) do
         if e:IsA("BlurEffect") and e.Enabled then e.Enabled = false e.Size = 0 end
@@ -479,43 +449,18 @@ local function stopDeathEffects()
     end
 end
 
--- Мгновенно стопим новые звуки смерти
-game:GetService("SoundService").DescendantAdded:Connect(function(s)
-    if infHPEnabled and s:IsA("Sound") then
-        task.wait(0.01)
-        if s.Playing then
-            local n = s.Name:lower()
-            for _, key in ipairs(deathSoundNames) do
-                if n:find(key) then
-                    pcall(function() s:Stop() s.Volume = 0 end)
-                    break
-                end
-            end
-        end
-    end
-end)
-
 local function hookChar(char)
     if not char then return end
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not hum then return end
-
     hum.HealthChanged:Connect(function()
-        if infHPEnabled then
-            hum.Health = hum.MaxHealth
-            stopDeathEffects()
-        end
+        if infHPEnabled then hum.Health = hum.MaxHealth; stopDeathEffects() end
     end)
-
     hum.Died:Connect(function()
-        if infHPEnabled then
-            hum.Health = hum.MaxHealth
-            stopDeathEffects()
-        end
+        if infHPEnabled then hum.Health = hum.MaxHealth; stopDeathEffects() end
     end)
 end
 
--- Быстрый цикл (быстрее чем у игры)
 task.spawn(function()
     while task.wait(0.01) do
         if infHPEnabled then
@@ -523,12 +468,8 @@ task.spawn(function()
             if char then
                 local hum = char:FindFirstChildOfClass("Humanoid")
                 if hum then
-                    if hum.Health < hum.MaxHealth then
-                        hum.Health = hum.MaxHealth
-                    end
-                    if hum.MaxHealth ~= math.huge then
-                        hum.MaxHealth = math.huge
-                    end
+                    if hum.Health < hum.MaxHealth then hum.Health = hum.MaxHealth end
+                    if hum.MaxHealth ~= math.huge then hum.MaxHealth = math.huge end
                 end
             end
             stopDeathEffects()
@@ -552,7 +493,6 @@ RageTab:CreateToggle({
     end
 })
 
--- ============ НЕВИДИМОСТЬ ============
 RageTab:CreateSection("Невидимость")
 
 local invisiblePlayers = false
@@ -575,9 +515,7 @@ local function startInvisLoop()
     invisLoopRunning = true
     task.spawn(function()
         while invisLoopRunning do
-            if invisiblePlayers or invisibleBots then
-                applyInvisibility(true)
-            end
+            if invisiblePlayers or invisibleBots then applyInvisibility(true) end
             task.wait(0.1)
         end
     end)
@@ -603,7 +541,6 @@ RageTab:CreateToggle({
     end
 })
 
--- ============ ESP ============
 RageTab:CreateSection("ESP")
 
 local espBox = false
@@ -769,6 +706,249 @@ Players.PlayerAdded:Connect(function(plr) task.wait(1); createESP(plr) end)
 Players.PlayerRemoving:Connect(function(plr) clearESP(plr) end)
 
 -- ============================================
+-- ВКЛАДКА GAMES
+-- ============================================
+local GamesTab = Window:CreateTab("Games", 4483362458)
+local DoorsTab = GamesTab:CreateTab("Doors", 4483362458)
+
+-- ESP СУЩНОСТИ
+local doorsEntityESP = false
+
+local entityNames = {"Rush", "Ambush", "Seek", "Figure", "Screech", "Eyes", "Hide", "Glitch", "Jack"}
+
+local function isEntity(name)
+    for _, n in ipairs(entityNames) do
+        if name:lower():find(n:lower()) then return true end
+    end
+    return false
+end
+
+DoorsTab:CreateToggle({
+    Name = "ESP: Сущности",
+    CurrentValue = false,
+    Callback = function(state)
+        doorsEntityESP = state
+        if state then
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("Model") and isEntity(obj.Name) then
+                    if not obj:FindFirstChild("EntityESP") then
+                        local h = Instance.new("Highlight")
+                        h.Name = "EntityESP"
+                        h.Adornee = obj
+                        h.FillColor = Color3.fromRGB(255, 0, 0)
+                        h.FillTransparency = 0.5
+                        h.OutlineColor = Color3.fromRGB(255, 255, 255)
+                        h.Parent = obj
+                    end
+                end
+            end
+        else
+            for _, obj in pairs(workspace:GetDescendants()) do
+                local h = obj:FindFirstChild("EntityESP")
+                if h then h:Destroy() end
+            end
+        end
+    end
+})
+
+-- ESP ПРЕДМЕТЫ
+local doorsItemESP = false
+
+local itemNames = {"Key", "Lighter", "Vitamin", "Crucifix", "Book", "Lockpick", "Bandage", "Flashlight", "Battery"}
+
+local function isItem(name)
+    for _, n in ipairs(itemNames) do
+        if name:lower():find(n:lower()) then return true end
+    end
+    return false
+end
+
+DoorsTab:CreateToggle({
+    Name = "ESP: Предметы",
+    CurrentValue = false,
+    Callback = function(state)
+        doorsItemESP = state
+        if state then
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("Model") and isItem(obj.Name) then
+                    if not obj:FindFirstChild("ItemESP") then
+                        local h = Instance.new("Highlight")
+                        h.Name = "ItemESP"
+                        h.Adornee = obj
+                        h.FillColor = Color3.fromRGB(0, 255, 0)
+                        h.FillTransparency = 0.5
+                        h.OutlineColor = Color3.fromRGB(255, 255, 255)
+                        h.Parent = obj
+                    end
+                end
+            end
+        else
+            for _, obj in pairs(workspace:GetDescendants()) do
+                local h = obj:FindFirstChild("ItemESP")
+                if h then h:Destroy() end
+            end
+        end
+    end
+})
+
+-- ESP ДВЕРИ
+local doorsDoorESP = false
+
+DoorsTab:CreateToggle({
+    Name = "ESP: Двери и рычаги",
+    CurrentValue = false,
+    Callback = function(state)
+        doorsDoorESP = state
+        if state then
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("Model") and (obj.Name:lower():find("door") or obj.Name:lower():find("lever")) then
+                    if not obj:FindFirstChild("DoorESP") then
+                        local h = Instance.new("Highlight")
+                        h.Name = "DoorESP"
+                        h.Adornee = obj
+                        h.FillColor = Color3.fromRGB(0, 150, 255)
+                        h.FillTransparency = 0.5
+                        h.OutlineColor = Color3.fromRGB(255, 255, 255)
+                        h.Parent = obj
+                    end
+                end
+            end
+        else
+            for _, obj in pairs(workspace:GetDescendants()) do
+                local h = obj:FindFirstChild("DoorESP")
+                if h then h:Destroy() end
+            end
+        end
+    end
+})
+
+-- AUTO HIDE
+local doorsAutoHide = false
+
+DoorsTab:CreateToggle({
+    Name = "Auto Hide (в шкаф от Rush/Ambush)",
+    CurrentValue = false,
+    Callback = function(state) doorsAutoHide = state end
+})
+
+task.spawn(function()
+    while task.wait(0.1) do
+        if doorsAutoHide then
+            local char = LocalPlayer.Character
+            if char then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    for _, obj in pairs(workspace:GetDescendants()) do
+                        if obj:IsA("Model") and (obj.Name:lower():find("rush") or obj.Name:lower():find("ambush")) then
+                            local dist = (obj:GetPivot().Position - hrp.Position).Magnitude
+                            if dist < 60 then
+                                local closest, cd = nil, 999
+                                for _, spot in pairs(workspace:GetDescendants()) do
+                                    if spot:IsA("Model") and (spot.Name:lower():find("closet") or spot.Name:lower():find("hiding") or spot.Name:lower():find("locker")) then
+                                        local d = (spot:GetPivot().Position - hrp.Position).Magnitude
+                                        if d < cd then cd = d closest = spot end
+                                    end
+                                end
+                                if closest then
+                                    hrp.CFrame = CFrame.new(closest:GetPivot().Position + Vector3.new(0, 2, 0))
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- ANTI SCREECH
+local doorsAntiScreech = false
+
+DoorsTab:CreateToggle({
+    Name = "Anti Screech",
+    CurrentValue = false,
+    Callback = function(state) doorsAntiScreech = state end
+})
+
+task.spawn(function()
+    while task.wait(0.3) do
+        if doorsAntiScreech then
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("Model") and obj.Name:lower():find("screech") then
+                    pcall(function() obj:Destroy() end)
+                end
+            end
+        end
+    end
+end)
+
+-- GODMODE
+local doorsGodmode = false
+
+DoorsTab:CreateToggle({
+    Name = "Godmode (бесконечное HP)",
+    CurrentValue = false,
+    Callback = function(state)
+        doorsGodmode = state
+        local char = LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum.MaxHealth = state and math.huge or 100
+                hum.Health = state and math.huge or 100
+            end
+        end
+    end
+})
+
+task.spawn(function()
+    while task.wait(0.1) do
+        if doorsGodmode then
+            local char = LocalPlayer.Character
+            if char then
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    hum.MaxHealth = math.huge
+                    hum.Health = math.huge
+                end
+            end
+        end
+    end
+end)
+
+-- ТЕЛЕПОРТ К ВЫХОДУ
+local doorsExitTP = false
+
+DoorsTab:CreateToggle({
+    Name = "Телепорт к выходу (авто)",
+    CurrentValue = false,
+    Callback = function(state) doorsExitTP = state end
+})
+
+task.spawn(function()
+    while task.wait(0.5) do
+        if doorsExitTP then
+            local char = LocalPlayer.Character
+            if char then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local exit, ed = nil, 9999
+                    for _, obj in pairs(workspace:GetDescendants()) do
+                        if obj:IsA("BasePart") and (obj.Name:lower():find("exit") or obj.Name:lower():find("door150") or obj.Name:lower():find("exitdoor")) then
+                            local d = (obj.Position - hrp.Position).Magnitude
+                            if d < ed then ed = d exit = obj end
+                        end
+                    end
+                    if exit then
+                        hrp.CFrame = CFrame.new(exit.Position + Vector3.new(0, 3, 0))
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- ============================================
 -- ВКЛАДКА TELEPORT
 -- ============================================
 local TeleportTab = Window:CreateTab("Teleport", 4483362458)
@@ -916,6 +1096,6 @@ end
 -- ============================================
 Rayfield:Notify({
     Title = "Скрипт загружен",
-    Content = "by Webs_My",
+    Content = "Вкладки: Main, Rage, Games (Doors), Teleport",
     Duration = 4
 })
