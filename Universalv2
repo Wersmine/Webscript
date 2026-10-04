@@ -1,0 +1,1234 @@
+-- ============================================
+-- Полный скрипт: Main + Visual + Rage + Movement + Teleport + Players + Troll + Util
+-- Автор: Webs_My
+-- ============================================
+
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Lighting = game:GetService("Lighting")
+local SoundService = game:GetService("SoundService")
+local LocalPlayer = Players.LocalPlayer
+
+local Window = Rayfield:CreateWindow({
+    Name = "Webs_My",
+    LoadingTitle = "Загрузка...",
+    LoadingSubtitle = "by Webs_My",
+    ConfigurationSaving = { Enabled = false }
+})
+
+-- ============================================
+-- КООРДИНАТЫ + FPS НА ЭКРАНЕ
+-- ============================================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = game.CoreGui
+ScreenGui.Name = "CoordsDisplay"
+ScreenGui.ResetOnSpawn = false
+
+local CoordsFrame = Instance.new("Frame")
+CoordsFrame.Size = UDim2.new(0, 260, 0, 56)
+CoordsFrame.Position = UDim2.new(0, 10, 0, 40)
+CoordsFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+CoordsFrame.BackgroundTransparency = 0.25
+CoordsFrame.BorderSizePixel = 0
+CoordsFrame.Parent = ScreenGui
+
+local CoordsCorner = Instance.new("UICorner")
+CoordsCorner.CornerRadius = UDim.new(0, 8)
+CoordsCorner.Parent = CoordsFrame
+
+local CoordsText = Instance.new("TextLabel")
+CoordsText.Size = UDim2.new(1, 0, 0.6, 0)
+CoordsText.BackgroundTransparency = 1
+CoordsText.TextColor3 = Color3.fromRGB(0, 255, 120)
+CoordsText.Font = Enum.Font.Code
+CoordsText.TextSize = 14
+CoordsText.Text = "X: 0  Y: 0  Z: 0"
+CoordsText.Parent = CoordsFrame
+
+local FpsText = Instance.new("TextLabel")
+FpsText.Size = UDim2.new(1, 0, 0.4, 0)
+FpsText.Position = UDim2.new(0, 0, 0.6, 0)
+FpsText.BackgroundTransparency = 1
+FpsText.TextColor3 = Color3.fromRGB(255, 200, 60)
+FpsText.Font = Enum.Font.Code
+FpsText.TextSize = 13
+FpsText.Text = "FPS: —  Ping: —"
+FpsText.Parent = CoordsFrame
+
+local fpsCount, fpsTime = 0, tick()
+task.spawn(function()
+    while task.wait(0.1) do
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local p = char.HumanoidRootPart.Position
+            CoordsText.Text = "X: " .. math.floor(p.X) .. "  Y: " .. math.floor(p.Y) .. "  Z: " .. math.floor(p.Z)
+        end
+        fpsCount = fpsCount + 1
+        if tick() - fpsTime >= 1 then
+            local ping = "—"
+            pcall(function() ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()) end)
+            FpsText.Text = "FPS: " .. fpsCount .. "  Ping: " .. ping
+            fpsCount, fpsTime = 0, tick()
+        end
+    end
+end)
+
+RunService.RenderStepped:Connect(function() fpsCount = fpsCount + 1 end)
+
+-- ============================================
+-- ВКЛАДКА MAIN
+-- ============================================
+local MainTab = Window:CreateTab("Main", 4483362458)
+MainTab:CreateSection("Персонаж")
+
+local walkSpeed = 16
+local jumpPower = 50
+local noclipEnabled = false
+local infJumpEnabled = false
+local dashEnabled = false
+local dashCooldown = false
+local dashSpeed = 300
+
+local function applyStats(char)
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.WalkSpeed = walkSpeed
+        hum.UseJumpPower = true
+        hum.JumpPower = jumpPower
+    end
+end
+
+MainTab:CreateSlider({ Name = "Скорость (WalkSpeed)", Range = {16, 1000}, Increment = 1, CurrentValue = 16,
+    Callback = function(v) walkSpeed = v; applyStats(LocalPlayer.Character) end })
+
+MainTab:CreateSlider({ Name = "Высота прыжка", Range = {50, 5000}, Increment = 5, CurrentValue = 50,
+    Callback = function(v) jumpPower = v; applyStats(LocalPlayer.Character) end })
+
+MainTab:CreateToggle({ Name = "Бесконечный прыжок", CurrentValue = false,
+    Callback = function(state) infJumpEnabled = state end })
+
+RunService.Heartbeat:Connect(function()
+    if not infJumpEnabled then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum then hum.Jump = true end
+end)
+
+-- ============ NOCLIP ============
+MainTab:CreateSection("Noclip")
+
+MainTab:CreateToggle({ Name = "Noclip", CurrentValue = false,
+    Callback = function(state)
+        noclipEnabled = state
+        local char = LocalPlayer.Character
+        if char and not state then
+            for _, obj in pairs(char:GetDescendants()) do
+                if obj:IsA("BasePart") then obj.CanCollide = true end
+            end
+        end
+    end })
+
+RunService.Stepped:Connect(function()
+    if not noclipEnabled then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    for _, obj in pairs(char:GetDescendants()) do
+        if obj:IsA("BasePart") and obj ~= hrp then obj.CanCollide = false end
+    end
+end)
+
+RunService.Heartbeat:Connect(function()
+    if not noclipEnabled then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if hrp and hrp.Position.Y < -10 then
+        hrp.CFrame = CFrame.new(hrp.Position.X, 5, hrp.Position.Z)
+    end
+end)
+
+-- ============ ПОЛЁТ ============
+MainTab:CreateSection("Полёт")
+
+local flyEnabled = false
+local flySpeed = 50
+local flyBV = nil
+local currentVel = Vector3.new(0, 0, 0)
+
+MainTab:CreateSlider({ Name = "Скорость полёта", Range = {10, 500}, Increment = 5, CurrentValue = 50,
+    Callback = function(v) flySpeed = v end })
+
+local function cleanupFly()
+    if flyBV then flyBV:Destroy() flyBV = nil end
+    local char = LocalPlayer.Character
+    if char then
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local bv = hrp:FindFirstChild("FlyBV")
+            if bv then bv:Destroy() end
+        end
+    end
+    currentVel = Vector3.new(0, 0, 0)
+end
+
+MainTab:CreateToggle({ Name = "Полёт (Fly)", CurrentValue = false,
+    Callback = function(state)
+        flyEnabled = state
+        if state then
+            local char = LocalPlayer.Character
+            if not char then return end
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+            currentVel = Vector3.new(0, 0, 0)
+            flyBV = Instance.new("BodyVelocity")
+            flyBV.Name = "FlyBV"
+            flyBV.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+            flyBV.Velocity = Vector3.new(0, 0, 0)
+            flyBV.Parent = hrp
+        else cleanupFly() end
+    end })
+
+RunService.RenderStepped:Connect(function(dt)
+    if not flyEnabled then return end
+    local cam = workspace.CurrentCamera
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    if not flyBV or not flyBV.Parent then
+        flyBV = Instance.new("BodyVelocity")
+        flyBV.Name = "FlyBV"
+        flyBV.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+        flyBV.Parent = hrp
+    end
+    local move = hum and hum.MoveDirection or Vector3.new(0, 0, 0)
+    local camCF = cam.CFrame
+    local camLook = camCF.LookVector
+    local camRight = camCF.RightVector
+    local camForwardFlat = Vector3.new(camLook.X, 0, camLook.Z)
+    if camForwardFlat.Magnitude > 0.01 then camForwardFlat = camForwardFlat.Unit end
+    local rightInput = move:Dot(camRight)
+    local forwardInput = move:Dot(camForwardFlat)
+    local targetVel = camLook * forwardInput + camRight * rightInput
+    if targetVel.Magnitude > 0.01 then targetVel = targetVel.Unit * flySpeed
+    else targetVel = Vector3.new(0, 0, 0) end
+    currentVel = currentVel:Lerp(targetVel, math.clamp(dt * 8, 0, 1))
+    flyBV.Velocity = currentVel
+end)
+
+-- ============ GRAVITY ============
+MainTab:CreateSection("Гравитация")
+local defaultGrav = workspace.Gravity
+MainTab:CreateSlider({ Name = "Гравитация", Range = {0, 200}, Increment = 1, CurrentValue = defaultGrav,
+    Callback = function(v) workspace.Gravity = v end })
+MainTab:CreateButton({ Name = "Вернуть стандарт (196)", Callback = function() workspace.Gravity = 196 end })
+MainTab:CreateButton({ Name = "Луна (30)", Callback = function() workspace.Gravity = 30 end })
+MainTab:CreateButton({ Name = "Космос (0)", Callback = function() workspace.Gravity = 0 end })
+
+-- ============ SUPER JUMP ============
+MainTab:CreateSection("Super Jump")
+MainTab:CreateButton({ Name = "🚀 Прыжок на 100 стад", Callback = function()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    hrp.Velocity = Vector3.new(hrp.Velocity.X, 200, hrp.Velocity.Z)
+end })
+
+MainTab:CreateButton({ Name = "🚀 Прыжок на 1000 стад", Callback = function()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    hrp.Velocity = Vector3.new(hrp.Velocity.X, 600, hrp.Velocity.Z)
+end })
+
+-- ============ DASH ============
+MainTab:CreateSection("Dash (рывок)")
+MainTab:CreateSlider({ Name = "Сила рывка", Range = {50, 1000}, Increment = 10, CurrentValue = 300,
+    Callback = function(v) dashSpeed = v end })
+
+MainTab:CreateToggle({ Name = "Dash (пробел в бегу)", CurrentValue = false,
+    Callback = function(state) dashEnabled = state end })
+
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if not dashEnabled then return end
+    if input.KeyCode == Enum.KeyCode.Space then
+        if dashCooldown then return end
+        dashCooldown = true
+        local char = LocalPlayer.Character
+        if not char then dashCooldown = false return end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hrp and hum then
+            local dir = hum.MoveDirection
+            if dir.Magnitude < 0.1 then dir = hrp.CFrame.LookVector end
+            hrp.Velocity = dir.Unit * dashSpeed
+        end
+        task.wait(0.5)
+        dashCooldown = false
+    end
+end)
+
+-- ============ SPIN ============
+MainTab:CreateSection("Spin (себя)")
+local spinEnabled = false
+local spinSpeed = 360
+MainTab:CreateSlider({ Name = "Скорость вращения (°/сек)", Range = {0, 50000}, Increment = 100, CurrentValue = 360,
+    Callback = function(v) spinSpeed = v end })
+MainTab:CreateButton({ Name = "🌀 360°/сек", Callback = function() spinSpeed = 360 end })
+MainTab:CreateButton({ Name = "🌀 3600°/сек", Callback = function() spinSpeed = 3600 end })
+MainTab:CreateButton({ Name = "🌀 10000°/сек", Callback = function() spinSpeed = 10000 end })
+MainTab:CreateButton({ Name = "🌀 50000°/сек", Callback = function() spinSpeed = 50000 end })
+MainTab:CreateToggle({ Name = "Spin (себя)", CurrentValue = false, Callback = function(s) spinEnabled = s end })
+
+RunService.Heartbeat:Connect(function(dt)
+    if not spinEnabled then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(spinSpeed) * dt, 0)
+end)
+
+-- ============ РАЗМЕР ============
+MainTab:CreateSection("Размер персонажа")
+MainTab:CreateSlider({ Name = "Размер (0.5 - 10)", Range = {0.5, 10}, Increment = 0.5, CurrentValue = 1,
+    Callback = function(v)
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            for _, obj in pairs(char:GetDescendants()) do
+                if obj:IsA("BasePart") and obj.Name ~= "HumanoidRootPart" then
+                    obj.Size = obj.Size * 0 + Vector3.new(2, 2, 1) * v
+                    obj.Size = Vector3.new(2*v, 2*v, 1*v)
+                end
+            end
+        end
+    end })
+MainTab:CreateButton({ Name = "Вернуть размер", Callback = function()
+    local char = LocalPlayer.Character
+    if not char then return end
+    for _, obj in pairs(char:GetDescendants()) do
+        if obj:IsA("BasePart") and obj.Name == "Head" then obj.Size = Vector3.new(2, 1, 1)
+        elseif obj:IsA("BasePart") and obj.Name == "Torso" then obj.Size = Vector3.new(2, 2, 1)
+        elseif obj:IsA("BasePart") and obj.Name == "HumanoidRootPart" then obj.Size = Vector3.new(2, 2, 1)
+        elseif obj:IsA("BasePart") then obj.Size = Vector3.new(1, 1, 1) end
+    end
+end })
+
+-- ============ RGB ============
+MainTab:CreateSection("RGB персонажа")
+local rgbEnabled = false
+MainTab:CreateToggle({ Name = "RGB (радуга)", CurrentValue = false, Callback = function(s) rgbEnabled = s end })
+
+task.spawn(function()
+    while task.wait(0.05) do
+        if rgbEnabled then
+            local char = LocalPlayer.Character
+            if char then
+                local hue = tick() % 1
+                local col = Color3.fromHSV(hue, 1, 1)
+                for _, obj in pairs(char:GetDescendants()) do
+                    if obj:IsA("BasePart") then obj.Color = col end
+                end
+            end
+        end
+    end
+end)
+
+-- ============ TRAIL ============
+MainTab:CreateSection("Trail (шлейф)")
+local trailEnabled = false
+local trailInst = nil
+
+MainTab:CreateToggle({ Name = "Trail", CurrentValue = false, Callback = function(state)
+    trailEnabled = state
+    local char = LocalPlayer.Character
+    if not char then return end
+    if state then
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local head = char:FindFirstChild("Head")
+        if hrp and head and not hrp:FindFirstChild("MyTrail") then
+            local a0 = Instance.new("Attachment", hrp)
+            a0.Name = "TrailA0"
+            local a1 = Instance.new("Attachment", head)
+            a1.Name = "TrailA1"
+            trailInst = Instance.new("Trail")
+            trailInst.Name = "MyTrail"
+            trailInst.Attachment0 = a0
+            trailInst.Attachment1 = a1
+            trailInst.Lifetime = 2
+            trailInst.Color = ColorSequence.new(Color3.fromRGB(255,0,0), Color3.fromRGB(0,255,0))
+            trailInst.Parent = hrp
+        end
+    else
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local t = hrp:FindFirstChild("MyTrail")
+            if t then t:Destroy() end
+            for _, a in pairs(hrp:GetChildren()) do
+                if a.Name == "TrailA0" then a:Destroy() end
+            end
+        end
+        local head = char:FindFirstChild("Head")
+        if head then
+            for _, a in pairs(head:GetChildren()) do
+                if a.Name == "TrailA1" then a:Destroy() end
+            end
+        end
+    end
+end })
+
+-- ============================================
+-- ВКЛАДКА VISUAL
+-- ============================================
+local VisualTab = Window:CreateTab("Visual", 4483362458)
+VisualTab:CreateSection("Освещение")
+
+local originalBrightness = Lighting.Brightness
+local originalClockTime = Lighting.ClockTime
+local originalFogEnd = Lighting.FogEnd
+local originalFogStart = Lighting.FogStart
+local originalAmbient = Lighting.Ambient
+local originalOutdoorAmbient = Lighting.OutdoorAmbient
+
+VisualTab:CreateToggle({ Name = "Убрать тени", CurrentValue = false,
+    Callback = function(state) Lighting.GlobalShadows = not state end })
+
+VisualTab:CreateToggle({ Name = "Всегда светло", CurrentValue = false, Callback = function(state)
+    if state then
+        Lighting.Brightness = 3
+        Lighting.ClockTime = 14
+        Lighting.Ambient = Color3.fromRGB(180, 180, 180)
+        Lighting.OutdoorAmbient = Color3.fromRGB(180, 180, 180)
+    else
+        Lighting.Brightness = originalBrightness
+        Lighting.ClockTime = originalClockTime
+        Lighting.Ambient = originalAmbient
+        Lighting.OutdoorAmbient = originalOutdoorAmbient
+    end
+end })
+
+VisualTab:CreateToggle({ Name = "Убрать туман", CurrentValue = false, Callback = function(state)
+    if state then
+        Lighting.FogEnd = 100000
+        Lighting.FogStart = 100000
+    else
+        Lighting.FogEnd = originalFogEnd
+        Lighting.FogStart = originalFogStart
+    end
+end })
+
+VisualTab:CreateButton({ Name = "☀️ День", Callback = function()
+    Lighting.Brightness = 3; Lighting.ClockTime = 14
+    Lighting.Ambient = Color3.fromRGB(180,180,180)
+    Lighting.OutdoorAmbient = Color3.fromRGB(180,180,180)
+end })
+VisualTab:CreateButton({ Name = "🌙 Ночь", Callback = function()
+    Lighting.Brightness = 1; Lighting.ClockTime = 0
+    Lighting.Ambient = Color3.fromRGB(30,30,50)
+    Lighting.OutdoorAmbient = Color3.fromRGB(30,30,50)
+end })
+VisualTab:CreateButton({ Name = "🌅 Закат", Callback = function()
+    Lighting.Brightness = 2; Lighting.ClockTime = 18
+end })
+VisualTab:CreateSlider({ Name = "Яркость", Range = {0, 10}, Increment = 0.5, CurrentValue = 2,
+    Callback = function(v) Lighting.Brightness = v end })
+VisualTab:CreateSlider({ Name = "Время дня", Range = {0, 24}, Increment = 0.5, CurrentValue = 14,
+    Callback = function(v) Lighting.ClockTime = v end })
+
+VisualTab:CreateSection("Эффекты")
+local effectsRemoved = false
+VisualTab:CreateToggle({ Name = "Убрать все эффекты", CurrentValue = false, Callback = function(state)
+    effectsRemoved = state
+    for _, obj in pairs(Lighting:GetChildren()) do
+        if obj:IsA("BlurEffect") or obj:IsA("BloomEffect") or obj:IsA("SunRaysEffect")
+            or obj:IsA("ColorCorrectionEffect") or obj:IsA("DepthOfFieldEffect") then
+            obj.Enabled = not state
+        end
+    end
+end })
+
+task.spawn(function()
+    while task.wait(1) do
+        if effectsRemoved then
+            for _, obj in pairs(Lighting:GetChildren()) do
+                if obj:IsA("BlurEffect") or obj:IsA("BloomEffect") or obj:IsA("SunRaysEffect")
+                    or obj:IsA("ColorCorrectionEffect") or obj:IsA("DepthOfFieldEffect") then
+                    obj.Enabled = false
+                end
+            end
+        end
+    end
+end)
+
+-- ============================================
+-- ВКЛАДКА RAGE
+-- ============================================
+local RageTab = Window:CreateTab("Rage", 4483362458)
+RageTab:CreateSection("Aimbot")
+
+local aimPlayers = false
+local aimBots = false
+local aimFOV = 300
+local aimRange = 500
+local aimSmooth = 0.3
+local aimTeamCheck = false
+local aimWallCheck = true
+local aimPart = "Head"
+
+RageTab:CreateToggle({ Name = "Aimbot: Игроки", CurrentValue = false, Callback = function(s) aimPlayers = s end })
+RageTab:CreateToggle({ Name = "Aimbot: Боты", CurrentValue = false, Callback = function(s) aimBots = s end })
+RageTab:CreateSlider({ Name = "FOV", Range = {50, 1500}, Increment = 10, CurrentValue = 300, Callback = function(v) aimFOV = v end })
+RageTab:CreateSlider({ Name = "Дальность", Range = {50, 5000}, Increment = 50, CurrentValue = 500, Callback = function(v) aimRange = v end })
+RageTab:CreateSlider({ Name = "Плавность", Range = {0.02, 1}, Increment = 0.02, CurrentValue = 0.3, Callback = function(v) aimSmooth = v end })
+RageTab:CreateToggle({ Name = "Проверка команды", CurrentValue = false, Callback = function(s) aimTeamCheck = s end })
+RageTab:CreateToggle({ Name = "Проверка стен", CurrentValue = true, Callback = function(s) aimWallCheck = s end })
+RageTab:CreateDropdown({ Name = "Часть тела", Options = {"Head","HumanoidRootPart","UpperTorso","LowerTorso"}, CurrentOption = {"Head"},
+    Callback = function(opt) aimPart = opt[1] end })
+
+local function hasLineOfSight(targetPart)
+    local cam = workspace.CurrentCamera
+    local origin = cam.CFrame.Position
+    local dir = (targetPart.Position - origin)
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    params.FilterDescendantsInstances = {LocalPlayer.Character, targetPart.Parent}
+    return workspace:Raycast(origin, dir, params) == nil
+end
+
+local function isNPC(model)
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr.Character == model then return false end
+    end
+    return true
+end
+
+local function getBots()
+    local bots = {}
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") then
+            local hum = obj:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 and isNPC(obj) then table.insert(bots, obj) end
+        end
+    end
+    return bots
+end
+
+local function findPart(model)
+    local names = {aimPart, "Head", "UpperTorso", "Torso", "HumanoidRootPart"}
+    for _, n in ipairs(names) do
+        local p = model:FindFirstChild(n)
+        if p and p:IsA("BasePart") then return p end
+    end
+    return nil
+end
+
+local function getClosestTarget()
+    local cam = workspace.CurrentCamera
+    local camPos = cam.CFrame.Position
+    local center = Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2)
+    local closest, closestScore = nil, aimFOV
+    local function checkModel(model)
+        local part = findPart(model)
+        if not part then return end
+        if (part.Position - camPos).Magnitude > aimRange then return end
+        local screenPos, onScreen = cam:WorldToViewportPoint(part.Position)
+        if not onScreen then return end
+        local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+        if screenDist < closestScore then
+            if not aimWallCheck or hasLineOfSight(part) then
+                closestScore = screenDist
+                closest = part
+            end
+        end
+    end
+    if aimPlayers then
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Character then
+                local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+                if hum and hum.Health > 0 then
+                    if not (aimTeamCheck and plr.Team and LocalPlayer.Team and plr.Team == LocalPlayer.Team) then
+                        checkModel(plr.Character)
+                    end
+                end
+            end
+        end
+    end
+    if aimBots then for _, bot in pairs(getBots()) do checkModel(bot) end end
+    return closest
+end
+
+RunService:BindToRenderStep("AimbotCamera", Enum.RenderPriority.Camera.Value + 1, function()
+    if not aimPlayers and not aimBots then return end
+    local target = getClosestTarget()
+    if not target then return end
+    local cam = workspace.CurrentCamera
+    cam.CFrame = cam.CFrame:Lerp(CFrame.new(cam.CFrame.Position, target.Position), math.clamp(aimSmooth, 0, 1))
+end)
+
+-- Silent Aim
+RageTab:CreateSection("Silent Aim")
+local silentAimEnabled = false
+RageTab:CreateToggle({ Name = "Silent Aim", CurrentValue = false, Callback = function(s) silentAimEnabled = s end })
+
+RunService.RenderStepped:Connect(function()
+    if not silentAimEnabled then return end
+    local target = getClosestTarget()
+    if not target then return end
+    local tool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
+    if tool then
+        pcall(function()
+            local m = LocalPlayer:GetMouse()
+            if m then m.Hit = target end
+        end)
+    end
+end)
+
+-- No Recoil / Rapid Fire
+RageTab:CreateSection("Оружие")
+local noRecoil = false
+local rapidFire = false
+local infAmmo = false
+
+RageTab:CreateToggle({ Name = "No Recoil", CurrentValue = false, Callback = function(s) noRecoil = s end })
+RageTab:CreateToggle({ Name = "Rapid Fire", CurrentValue = false, Callback = function(s) rapidFire = s end })
+RageTab:CreateToggle({ Name = "Infinite Ammo", CurrentValue = false, Callback = function(s) infAmmo = s end })
+
+task.spawn(function()
+    while task.wait(0.05) do
+        local char = LocalPlayer.Character
+        if char then
+            local tool = char:FindFirstChildWhichIsA("Tool")
+            if tool then
+                for _, obj in pairs(tool:GetDescendants()) do
+                    if obj:IsA("NumberValue") or obj:IsA("IntValue") then
+                        if noRecoil and obj.Name:lower():find("recoil") then obj.Value = 0 end
+                        if rapidFire and obj.Name:lower():find("firerate") then obj.Value = 999 end
+                        if infAmmo and obj.Name:lower():find("ammo") then obj.Value = 9999 end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- Бесконечное HP
+RageTab:CreateSection("Бесконечное HP")
+local infHPEnabled = false
+local function makeInvincible(char)
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    if hum.MaxHealth < 100 then hum.MaxHealth = 100 end
+    hum.Health = hum.MaxHealth
+    if not char:FindFirstChildOfClass("ForceField") then
+        local ff = Instance.new("ForceField")
+        ff.Name = "GodFF"; ff.Visible = false; ff.Parent = char
+    end
+end
+
+RunService.Heartbeat:Connect(function()
+    if not infHPEnabled then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hum or not hrp then return end
+    if hum.Health < hum.MaxHealth then hum.Health = hum.MaxHealth end
+    if hum.MaxHealth > 1000 then hum.MaxHealth = 100 end
+    if hum:GetState() == Enum.HumanoidStateType.Dead then hum:ChangeState(Enum.HumanoidStateType.GettingUp) end
+    if not char:FindFirstChildOfClass("ForceField") then
+        local ff = Instance.new("ForceField"); ff.Name = "GodFF"; ff.Visible = false; ff.Parent = char
+    end
+end)
+
+RageTab:CreateToggle({ Name = "Бесконечное HP", CurrentValue = false, Callback = function(state)
+    infHPEnabled = state
+    if state then makeInvincible(LocalPlayer.Character) end
+end })
+
+-- Невидимость
+RageTab:CreateSection("Невидимость")
+local invisibleEnabled = false
+local invisLoopRunning = false
+local function applyInvisibility(state)
+    local char = LocalPlayer.Character
+    if not char then return end
+    for _, obj in pairs(char:GetDescendants()) do
+        if obj:IsA("BasePart") or obj:IsA("Decal") then
+            obj.Transparency = state and 1 or 0
+            obj.LocalTransparencyModifier = state and 1 or 0
+        end
+    end
+end
+
+local function startInvisLoop()
+    if invisLoopRunning then return end
+    invisLoopRunning = true
+    task.spawn(function()
+        while invisLoopRunning do
+            if invisibleEnabled then applyInvisibility(true) end
+            task.wait(0.1)
+        end
+    end)
+end
+
+RageTab:CreateToggle({ Name = "Невидимость", CurrentValue = false, Callback = function(state)
+    invisibleEnabled = state
+    applyInvisibility(state)
+    if state then startInvisLoop() end
+end })
+
+-- ESP
+RageTab:CreateSection("ESP")
+local espBox, espName, espHealth, espTracer = false, false, false, false
+local espBoxSize = 3
+local espObjects, tracerLines = {}, {}
+
+local function clearESP(plr)
+    if espObjects[plr] then
+        for _, obj in pairs(espObjects[plr]) do if obj then obj:Destroy() end end
+        espObjects[plr] = nil
+    end
+    if tracerLines[plr] then
+        pcall(function() tracerLines[plr]:Remove() end)
+        tracerLines[plr] = nil
+    end
+end
+
+local function createESP(plr)
+    clearESP(plr)
+    espObjects[plr] = {}
+    local char = plr.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    if espBox then
+        local box = Instance.new("BoxHandleAdornment")
+        box.Name = "ESP_Box"; box.Size = Vector3.new(espBoxSize, espBoxSize*1.8, espBoxSize)
+        box.Adornee = hrp; box.AlwaysOnTop = true; box.ZIndex = 5
+        box.Transparency = 0.5; box.Color3 = Color3.fromRGB(255,0,0); box.Parent = hrp
+        table.insert(espObjects[plr], box)
+    end
+    if espName then
+        local bg = Instance.new("BillboardGui")
+        bg.Name = "ESP_Name"; bg.Size = UDim2.new(0,100,0,20)
+        bg.StudsOffset = Vector3.new(0,3,0); bg.AlwaysOnTop = true; bg.Adornee = hrp; bg.Parent = hrp
+        local txt = Instance.new("TextLabel")
+        txt.Size = UDim2.new(1,0,1,0); txt.BackgroundTransparency = 1
+        txt.Text = plr.Name; txt.TextColor3 = Color3.fromRGB(255,255,255)
+        txt.TextStrokeTransparency = 0; txt.Font = Enum.Font.SourceSansBold
+        txt.TextSize = 14; txt.Parent = bg
+        table.insert(espObjects[plr], bg)
+    end
+    if espHealth then
+        local bg = Instance.new("BillboardGui")
+        bg.Name = "ESP_Health"; bg.Size = UDim2.new(0,100,0,10)
+        bg.StudsOffset = Vector3.new(0,2.4,0); bg.AlwaysOnTop = true; bg.Adornee = hrp; bg.Parent = hrp
+        local bar = Instance.new("Frame")
+        bar.Size = UDim2.new(1,0,1,0); bar.BackgroundColor3 = Color3.fromRGB(0,255,0)
+        bar.BorderSizePixel = 0; bar.Parent = bg
+        local humanoid = char:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            local function updateBar() bar.Size = UDim2.new(humanoid.Health/humanoid.MaxHealth,0,1,0) end
+            humanoid.HealthChanged:Connect(updateBar); updateBar()
+        end
+        table.insert(espObjects[plr], bg)
+    end
+end
+
+local function updateAllESP()
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then createESP(plr) end
+    end
+end
+
+RunService.RenderStepped:Connect(function()
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            if espTracer and Drawing then
+                if not tracerLines[plr] then
+                    local line = Drawing.new("Line")
+                    line.Thickness = 2; line.Color = Color3.fromRGB(255,255,0)
+                    line.Transparency = 1; line.Visible = false; tracerLines[plr] = line
+                end
+                local line = tracerLines[plr]
+                local char = plr.Character
+                if char and char:FindFirstChild("HumanoidRootPart") then
+                    local cam = workspace.CurrentCamera
+                    local pos, onScreen = cam:WorldToViewportPoint(char.HumanoidRootPart.Position)
+                    if onScreen then
+                        line.From = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y)
+                        line.To = Vector2.new(pos.X, pos.Y); line.Visible = true
+                    else line.Visible = false end
+                else line.Visible = false end
+            elseif tracerLines[plr] then
+                pcall(function() tracerLines[plr]:Remove() end); tracerLines[plr] = nil
+            end
+        end
+    end
+end)
+
+RageTab:CreateToggle({ Name = "ESP: Бокс", CurrentValue = false, Callback = function(s) espBox = s; updateAllESP() end })
+RageTab:CreateToggle({ Name = "ESP: Ники", CurrentValue = false, Callback = function(s) espName = s; updateAllESP() end })
+RageTab:CreateToggle({ Name = "ESP: Здоровье", CurrentValue = false, Callback = function(s) espHealth = s; updateAllESP() end })
+RageTab:CreateToggle({ Name = "ESP: Трейсер", CurrentValue = false, Callback = function(s) espTracer = s end })
+RageTab:CreateSlider({ Name = "Размер бокса", Range = {1,10}, Increment = 0.5, CurrentValue = 3, Callback = function(v) espBoxSize = v; updateAllESP() end })
+Players.PlayerAdded:Connect(function(plr) task.wait(1); createESP(plr) end)
+Players.PlayerRemoving:Connect(function(plr) clearESP(plr) end)
+
+-- ============================================
+-- ВКЛАДКА TELEPORT
+-- ============================================
+local TeleportTab = Window:CreateTab("Teleport", 4483362458)
+local savedPoints = {}
+
+local function doTeleport(targetPos)
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    hrp.CFrame = CFrame.new(targetPos + Vector3.new(0,3,0))
+end
+
+local function saveCurrentPosition(index)
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        savedPoints[index] = char.HumanoidRootPart.Position
+        Rayfield:Notify({ Title = "Сохранено", Content = "Точка " .. index, Duration = 2 })
+    end
+end
+
+local function teleportToPoint(index, silent)
+    local p = savedPoints[index]
+    if p then
+        doTeleport(p)
+        if not silent then Rayfield:Notify({ Title = "Телепорт", Content = "Точка " .. index, Duration = 2 }) end
+        return true
+    end
+    return false
+end
+
+TeleportTab:CreateSection("Сохранение и телепорт")
+for i = 1, 5 do
+    TeleportTab:CreateButton({ Name = "Сохранить точку " .. i, Callback = function() saveCurrentPosition(i) end })
+    TeleportTab:CreateButton({ Name = "Телепорт к точке " .. i, Callback = function() teleportToPoint(i) end })
+end
+
+TeleportTab:CreateSection("Свои координаты")
+local selectedSlot = 1
+local manualX, manualY, manualZ = nil, nil, nil
+TeleportTab:CreateDropdown({ Name = "Слот", Options = {"1","2","3","4","5"}, CurrentOption = {"1"},
+    Callback = function(opt) selectedSlot = tonumber(opt[1]) end })
+TeleportTab:CreateInput({ Name = "X", PlaceholderText = "100", RemoveTextAfterFocusLost = false, Callback = function(t) manualX = tonumber(t) end })
+TeleportTab:CreateInput({ Name = "Y", PlaceholderText = "50", RemoveTextAfterFocusLost = false, Callback = function(t) manualY = tonumber(t) end })
+TeleportTab:CreateInput({ Name = "Z", PlaceholderText = "-200", RemoveTextAfterFocusLost = false, Callback = function(t) manualZ = tonumber(t) end })
+TeleportTab:CreateButton({ Name = "Сохранить координаты", Callback = function()
+    if manualX and manualY and manualZ then
+        savedPoints[selectedSlot] = Vector3.new(manualX, manualY, manualZ)
+        Rayfield:Notify({ Title = "Сохранено", Content = "Слот " .. selectedSlot, Duration = 2 })
+    end
+end })
+
+TeleportTab:CreateSection("Комбо")
+local comboRunning = false
+local comboDelay = 1
+TeleportTab:CreateSlider({ Name = "Пауза", Range = {0.2, 5}, Increment = 0.2, Suffix = " с", CurrentValue = 1,
+    Callback = function(v) comboDelay = v end })
+TeleportTab:CreateButton({ Name = "Запустить комбо", Callback = function()
+    if comboRunning then return end
+    comboRunning = true
+    task.spawn(function()
+        while comboRunning do
+            for i = 1, 5 do
+                if not comboRunning then break end
+                if savedPoints[i] then teleportToPoint(i, true); task.wait(comboDelay) end
+            end
+        end
+    end)
+end })
+TeleportTab:CreateButton({ Name = "Стоп", Callback = function() comboRunning = false end })
+
+-- ============================================
+-- ВКЛАДКА PLAYERS
+-- ============================================
+local PlayersTab = Window:CreateTab("Players", 4483362458)
+local selectedPlayerName = nil
+local selectedPlayer = nil
+
+PlayersTab:CreateSection("Выбор игрока")
+local function getPlayerNames()
+    local names = {}
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then table.insert(names, plr.Name) end
+    end
+    return names
+end
+
+local playerDropdown = PlayersTab:CreateDropdown({ Name = "Игрок", Options = getPlayerNames(), CurrentOption = {},
+    Callback = function(opt)
+        if #opt > 0 then
+            selectedPlayerName = opt[1]
+            selectedPlayer = Players:FindFirstChild(selectedPlayerName)
+        end
+    end })
+
+task.spawn(function()
+    while task.wait(3) do
+        local names = getPlayerNames()
+        pcall(function() playerDropdown:Refresh(names) end)
+    end
+end)
+
+PlayersTab:CreateButton({ Name = "🔄 Обновить список игроков", Callback = function()
+    local names = getPlayerNames()
+    pcall(function() playerDropdown:Refresh(names) end)
+    Rayfield:Notify({ Title = "Players", Content = "Список обновлён", Duration = 2 })
+end })
+
+-- Действия с игроком
+PlayersTab:CreateSection("Действия с игроком")
+
+PlayersTab:CreateButton({ Name = "🚀 К выбранному игроку", Callback = function()
+    if not selectedPlayer or not selectedPlayer.Character then
+        Rayfield:Notify({ Title = "Players", Content = "Выбери игрока", Duration = 3 }); return
+    end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local tHrp = selectedPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if hrp and tHrp then hrp.CFrame = CFrame.new(tHrp.Position + Vector3.new(0,3,0)) end
+end })
+
+PlayersTab:CreateButton({ Name = "🎣 Притянуть ко мне", Callback = function()
+    if not selectedPlayer or not selectedPlayer.Character then
+        Rayfield:Notify({ Title = "Players", Content = "Выбери игрока", Duration = 3 }); return
+    end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local tHrp = selectedPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if hrp and tHrp then tHrp.CFrame = CFrame.new(hrp.Position + Vector3.new(0,0,-3)) end
+end })
+
+PlayersTab:CreateButton({ Name = "❄️ Заморозить", Callback = function()
+    if not selectedPlayer or not selectedPlayer.Character then return end
+    local hum = selectedPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if hum then hum.WalkSpeed = 0; hum.JumpPower = 0 end
+end })
+
+PlayersTab:CreateButton({ Name = "🔥 Разморозить", Callback = function()
+    if not selectedPlayer or not selectedPlayer.Character then return end
+    local hum = selectedPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if hum then hum.WalkSpeed = 16; hum.JumpPower = 50 end
+end })
+
+PlayersTab:CreateButton({ Name = "💀 Убить (TakeDamage)", Callback = function()
+    if not selectedPlayer or not selectedPlayer.Character then return end
+    local hum = selectedPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if hum then pcall(function() hum:TakeDamage(99999) end) end
+end })
+
+-- Follow
+local followEnabled = false
+PlayersTab:CreateToggle({ Name = "👣 Следовать за игроком", CurrentValue = false, Callback = function(s) followEnabled = s end })
+RunService.Heartbeat:Connect(function()
+    if not followEnabled then return end
+    if not selectedPlayer or not selectedPlayer.Character then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local tHrp = selectedPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if hrp and tHrp then hrp.CFrame = CFrame.new(tHrp.Position + Vector3.new(0,3,-5)) end
+end)
+
+-- Spin других
+PlayersTab:CreateSection("Spin других игроков")
+local spinOthersEnabled = false
+local spinOthersSpeed = 720
+PlayersTab:CreateSlider({ Name = "Скорость вращения (°/сек)", Range = {0, 50000}, Increment = 100, CurrentValue = 720,
+    Callback = function(v) spinOthersSpeed = v end })
+PlayersTab:CreateButton({ Name = "🌀 360°/сек", Callback = function() spinOthersSpeed = 360 end })
+PlayersTab:CreateButton({ Name = "🌀 5000°/сек", Callback = function() spinOthersSpeed = 5000 end })
+PlayersTab:CreateButton({ Name = "🌀 50000°/сек", Callback = function() spinOthersSpeed = 50000 end })
+
+PlayersTab:CreateToggle({ Name = "🌀 Spin ВЫБРАННОГО", CurrentValue = false, Callback = function(state)
+    spinOthersEnabled = state
+    if state then
+        task.spawn(function()
+            while spinOthersEnabled do
+                if selectedPlayer and selectedPlayer.Character then
+                    local hrp = selectedPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    if hrp then hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(spinOthersSpeed/60), 0) end
+                end
+                task.wait(1/60)
+            end
+        end)
+    end
+end })
+
+PlayersTab:CreateButton({ Name = "🌀 Spin ВСЕХ (5 сек)", Callback = function()
+    local targets = {}
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then
+            local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then table.insert(targets, hrp) end
+        end
+    end
+    if #targets == 0 then return end
+    task.spawn(function()
+        local endTime = tick() + 5
+        while tick() < endTime do
+            for _, hrp in ipairs(targets) do
+                if hrp and hrp.Parent then
+                    hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(spinOthersSpeed/60), 0)
+                end
+            end
+            task.wait(1/60)
+        end
+    end)
+end })
+
+-- ============ ПОДБРОС ВВЕРХ ============
+PlayersTab:CreateSection("Подброс вверх")
+local LAUNCH_HEIGHT = 5000
+local function launchUp(targets)
+    for _, plr in ipairs(targets) do
+        if plr and plr.Character then
+            local char = plr.Character
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local newPos = Vector3.new(hrp.Position.X, LAUNCH_HEIGHT, hrp.Position.Z)
+                pcall(function() char:PivotTo(CFrame.new(newPos)) end)
+                pcall(function() hrp.CFrame = CFrame.new(newPos) end)
+            end
+        end
+    end
+end
+
+PlayersTab:CreateSlider({ Name = "Высота (Y)", Range = {500, 100000000}, Increment = 100000, CurrentValue = 5000,
+    Callback = function(v) LAUNCH_HEIGHT = v end })
+PlayersTab:CreateButton({ Name = "🚀 5 000", Callback = function() LAUNCH_HEIGHT = 5000 end })
+PlayersTab:CreateButton({ Name = "🚀 100 000", Callback = function() LAUNCH_HEIGHT = 100000 end })
+PlayersTab:CreateButton({ Name = "🌌 1 000 000", Callback = function() LAUNCH_HEIGHT = 1000000 end })
+PlayersTab:CreateButton({ Name = "🌌 10 000 000", Callback = function() LAUNCH_HEIGHT = 10000000 end })
+PlayersTab:CreateButton({ Name = "☠️ 100 000 000", Callback = function() LAUNCH_HEIGHT = 100000000 end })
+
+PlayersTab:CreateButton({ Name = "🚀 ВЫБРАННОГО вверх", Callback = function()
+    if not selectedPlayer or not selectedPlayer.Character then return end
+    launchUp({selectedPlayer})
+end })
+
+PlayersTab:CreateButton({ Name = "🚀 ВСЕХ вверх", Callback = function()
+    local targets = {}
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then table.insert(targets, plr) end
+    end
+    if #targets == 0 then return end
+    launchUp(targets)
+end })
+
+PlayersTab:CreateButton({ Name = "🧪 Подбросить СЕБЯ", Callback = function()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local newPos = Vector3.new(hrp.Position.X, LAUNCH_HEIGHT, hrp.Position.Z)
+    pcall(function() char:PivotTo(CFrame.new(newPos)) end)
+    pcall(function() hrp.CFrame = CFrame.new(newPos) end)
+end })
+
+-- ============ ТЕЛЕПОРТ ПОД КАРТУ ============
+PlayersTab:CreateSection("Телепорт под карту")
+local VOID_DEPTH = -500
+local function teleportUnderMap(targets)
+    for _, plr in ipairs(targets) do
+        if plr and plr.Character then
+            local char = plr.Character
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hrp then
+                local newPos = Vector3.new(hrp.Position.X, VOID_DEPTH, hrp.Position.Z)
+                pcall(function() char:PivotTo(CFrame.new(newPos)) end)
+                pcall(function() hrp.CFrame = CFrame.new(newPos) end)
+                if hum then
+                    pcall(function() hum:TakeDamage(99999) end)
+                    pcall(function() hum.Health = 0 end)
+                end
+            end
+        end
+    end
+end
+
+PlayersTab:CreateSlider({ Name = "Глубина (Y)", Range = {-50000, -50}, Increment = 50, CurrentValue = -500,
+    Callback = function(v) VOID_DEPTH = v end })
+PlayersTab:CreateButton({ Name = "💀 Выбранного под карту", Callback = function()
+    if not selectedPlayer or not selectedPlayer.Character then return end
+    teleportUnderMap({selectedPlayer})
+end })
+PlayersTab:CreateButton({ Name = "💀 ВСЕХ под карту", Callback = function()
+    local targets = {}
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then table.insert(targets, plr) end
+    end
+    if #targets == 0 then return end
+    teleportUnderMap(targets)
+end })
+PlayersTab:CreateButton({ Name = "🧪 Отправить СЕБЯ под карту", Callback = function()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local newPos = Vector3.new(hrp.Position.X, VOID_DEPTH, hrp.Position.Z)
+    pcall(function() char:PivotTo(CFrame.new(newPos)) end)
+    pcall(function() hrp.CFrame = CFrame.new(newPos) end)
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum then pcall(function() hum:TakeDamage(99999) end) end
+end })
+
+-- ============================================
+-- ВКЛАДКА TROLL
+-- ============================================
+local TrollTab = Window:CreateTab("Troll", 4483362458)
+
+TrollTab:CreateSection("Троллинг")
+
+-- Flip
+local flipEnabled = false
+TrollTab:CreateToggle({ Name = "Flip (вверх ногами)", CurrentValue = false, Callback = function(s) flipEnabled = s end })
+RunService.Heartbeat:Connect(function()
+    if not flipEnabled then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if hrp then hrp.CFrame = hrp.CFrame * CFrame.Angles(math.rad(180), 0, 0) end
+end)
+
+-- Ragdoll all
+TrollTab:CreateButton({ Name = "🤸 Ragdoll ALL", Callback = function()
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then
+            local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+            if hum then pcall(function() hum:ChangeState(Enum.HumanoidStateType.Physics) end) end
+        end
+    end
+end })
+
+-- Random TP всех
+TrollTab:CreateButton({ Name = "🎲 Разбросать всех случайно", Callback = function()
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then
+            local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                hrp.CFrame = CFrame.new(math.random(-500,500), math.random(100,500), math.random(-500,500))
+            end
+        end
+    end
+end })
+
+-- Sound spam
+local soundSpamEnabled = false
+TrollTab:CreateToggle({ Name = "🔊 Sound Spam (у себя)", CurrentValue = false, Callback = function(s) soundSpamEnabled = s end })
+task.spawn(function()
+    while task.wait(1) do
+        if soundSpamEnabled then
+            local s = Instance.new("Sound")
+            s.SoundId = "rbxassetid://131961136"
+            s.Volume = 3
+            s.Parent = SoundService
+            s:Play()
+            task.delay(2, function() s:Destroy() end)
+        end
+    end
+end)
+
+TrollTab:CreateSection("Телепорт случайно")
+TrollTab:CreateButton({ Name = "🎲 Телепорт СЕБЯ куда угодно", Callback = function()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if hrp then hrp.CFrame = CFrame.new(math.random(-500,500), math.random(50,500), math.random(-500,500)) end
+end })
+
+-- ============================================
+-- ВКЛАДКА UTIL
+-- ============================================
+local UtilTab = Window:CreateTab("Util", 4483362458)
+UtilTab:CreateSection("Утилиты")
+
+-- Anti-AFK
+local antiAfkEnabled = false
+UtilTab:CreateToggle({ Name = "Anti-AFK", CurrentValue = true, Callback = function(s) antiAfkEnabled = s end })
+antiAfkEnabled = true
+
+local VirtualUser = game:GetService("VirtualUser")
+LocalPlayer.Idled:Connect(function()
+    if antiAfkEnabled then
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
+    end
+end)
+
+-- Auto Rejoin
+local autoRejoin = false
+UtilTab:CreateToggle({ Name = "Auto Rejoin при кике", CurrentValue = false, Callback = function(s) autoRejoin = s end })
+
+-- Server Hop
+UtilTab:CreateButton({ Name = "🔄 Server Hop", Callback = function()
+    local ts = game:GetService("TeleportService")
+    local placeId = game.PlaceId
+    pcall(function()
+        local servers = game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..placeId.."/servers/Public?sortOrder=Asc&limit=100"))
+        for _, s in pairs(servers.data) do
+            if s.playing < s.maxPlayers and s.id ~= game.JobId then
+                ts:TeleportToPlaceInstance(placeId, s.id, LocalPlayer)
+                break
+            end
+        end
+    end)
+end })
+
+UtilTab:CreateButton({ Name = "🔁 Rejoin этот сервер", Callback = function()
+    game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer)
+end })
+
+UtilTab:CreateButton({ Name = "🎬 Rejoin текущий сервер (jobId)", Callback = function()
+    game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+end })
+
+-- ============================================
+-- ПРИ РЕСПАВНЕ
+-- ============================================
+LocalPlayer.CharacterAdded:Connect(function(char)
+    task.wait(0.5)
+    applyStats(char)
+    if invisibleEnabled then
+        task.wait(0.3)
+        applyInvisibility(true)
+    end
+    if infHPEnabled then makeInvincible(char) end
+end)
+
+if LocalPlayer.Character then
+    applyStats(LocalPlayer.Character)
+    if infHPEnabled then makeInvincible(LocalPlayer.Character) end
+end
+
+-- ============================================
+-- УВЕДОМЛЕНИЕ
+-- ============================================
+Rayfield:Notify({
+    Title = "Скрипт загружен",
+    Content = "Main, Visual, Rage, Teleport, Players, Troll, Util",
+    Duration = 4
+})
