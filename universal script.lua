@@ -1,1101 +1,171 @@
 -- ============================================
--- Полный скрипт: Main + Rage + Games(Doors) + Teleport
--- Автор: Webs_My
+-- WEBSHUB UNIVERSAL (FULL) by Webs_My
 -- ============================================
 
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local WebsHub = loadstring(game:HttpGet("https://raw.githubusercontent.com/Wersmine/WebsHubv0.1/refs/heads/main/WebsHub.lua?v=1001"))()
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+local Stats = game:GetService("Stats")
+local VirtualUser = game:GetService("VirtualUser")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
-local Window = Rayfield:CreateWindow({
-    Name = "Webs_My",
-    LoadingTitle = "Загрузка...",
-    LoadingSubtitle = "by Webs_My",
-    ConfigurationSaving = { Enabled = false }
-})
+local Window = WebsHub:CreateWindow({ Name = "Webs_My v4", Subtitle = "by Webs_My" })
+local MainTab = Window:CreateTab("Main")
+local MoveTab = Window:CreateTab("Movement")
+local EspTab = Window:CreateTab("ESP")
+local AimTab = Window:CreateTab("Aimbot")
+local TpTab = Window:CreateTab("Teleport")
+local PlrTab = Window:CreateTab("Players")
+local RageTab = Window:CreateTab("Rage")
+local VisTab = Window:CreateTab("Visual")
+local UtilTab = Window:CreateTab("Util")
 
--- ============================================
--- КООРДИНАТЫ НА ЭКРАНЕ
--- ============================================
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Parent = game.CoreGui
-ScreenGui.Name = "CoordsDisplay"
-ScreenGui.ResetOnSpawn = false
-
-local CoordsFrame = Instance.new("Frame")
-CoordsFrame.Size = UDim2.new(0, 210, 0, 34)
-CoordsFrame.Position = UDim2.new(0, 10, 0, 40)
-CoordsFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-CoordsFrame.BackgroundTransparency = 0.25
-CoordsFrame.BorderSizePixel = 0
-CoordsFrame.Parent = ScreenGui
-
-local CoordsCorner = Instance.new("UICorner")
-CoordsCorner.CornerRadius = UDim.new(0, 8)
-CoordsCorner.Parent = CoordsFrame
-
-local CoordsText = Instance.new("TextLabel")
-CoordsText.Size = UDim2.new(1, 0, 1, 0)
-CoordsText.BackgroundTransparency = 1
-CoordsText.TextColor3 = Color3.fromRGB(0, 255, 120)
-CoordsText.Font = Enum.Font.Code
-CoordsText.TextSize = 14
-CoordsText.Text = "X: 0  Y: 0  Z: 0"
-CoordsText.Parent = CoordsFrame
+-- HUD
+local HudGui = Instance.new("ScreenGui", game.CoreGui)
+HudGui.Name = "WebsHUD" HudGui.ResetOnSpawn = false
+local HudFrame = Instance.new("Frame", HudGui)
+HudFrame.Size = UDim2.new(0, 260, 0, 56) HudFrame.Position = UDim2.new(0, 10, 0, 40) HudFrame.BackgroundColor3 = Color3.fromRGB(15,15,15) HudFrame.BackgroundTransparency = 0.25
+Instance.new("UICorner", HudFrame).CornerRadius = UDim.new(0, 8)
+local Coords = Instance.new("TextLabel", HudFrame)
+Coords.Size = UDim2.new(1,0,0.6,0) Coords.BackgroundTransparency = 1 Coords.TextColor3 = Color3.fromRGB(0,255,120) Coords.Font = Enum.Font.Code Coords.TextSize = 14 Coords.Text = "X: 0 Y: 0 Z: 0"
+local Fps = Instance.new("TextLabel", HudFrame)
+Fps.Size = UDim2.new(1,0,0.4,0) Fps.Position = UDim2.new(0,0,0.6,0) Fps.BackgroundTransparency = 1 Fps.TextColor3 = Color3.fromRGB(255,200,60) Fps.Font = Enum.Font.Code Fps.TextSize = 13 Fps.Text = "FPS: — Ping: —"
 
 task.spawn(function()
+    local count, time = 0, tick()
     while task.wait(0.1) do
+        if not HudGui.Parent then break end
         local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            local p = char.HumanoidRootPart.Position
-            CoordsText.Text = "X: " .. math.floor(p.X) .. "  Y: " .. math.floor(p.Y) .. "  Z: " .. math.floor(p.Z)
-        end
+        if char and char:FindFirstChild("HumanoidRootPart") then local p = char.HumanoidRootPart.Position Coords.Text = "X: " .. math.floor(p.X) .. " Y: " .. math.floor(p.Y) .. " Z: " .. math.floor(p.Z) end
+        count = count + 1
+        if tick() - time >= 1 then local ping = "—" pcall(function() ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue()) end) Fps.Text = "FPS: " .. count .. " Ping: " .. ping count, time = 0, tick() end
     end
 end)
 
--- ============================================
--- ВКЛАДКА MAIN
--- ============================================
-local MainTab = Window:CreateTab("Main", 4483362458)
-
-MainTab:CreateSection("Персонаж")
-
-local walkSpeed = 16
-local jumpPower = 50
-local noclipEnabled = false
-
-local function applyStats(char)
-    if not char then return end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.WalkSpeed = walkSpeed
-        hum.UseJumpPower = true
-        hum.JumpPower = jumpPower
-    end
-end
-
-MainTab:CreateSlider({
-    Name = "Скорость (WalkSpeed)",
-    Range = {16, 300}, Increment = 1, CurrentValue = 16,
-    Callback = function(v) walkSpeed = v; applyStats(LocalPlayer.Character) end
-})
-
-MainTab:CreateSlider({
-    Name = "Высота прыжка",
-    Range = {50, 500}, Increment = 5, CurrentValue = 50,
-    Callback = function(v) jumpPower = v; applyStats(LocalPlayer.Character) end
-})
-
-MainTab:CreateSection("Noclip")
-
-MainTab:CreateToggle({
-    Name = "Noclip (проход сквозь стены)",
-    CurrentValue = false,
-    Callback = function(state)
-        noclipEnabled = state
-        if not state then
-            local char = LocalPlayer.Character
-            if char then
-                for _, obj in pairs(char:GetDescendants()) do
-                    if obj:IsA("BasePart") then obj.CanCollide = true end
-                end
-            end
-        end
-    end
-})
-
-RunService.Stepped:Connect(function()
-    if not noclipEnabled then return end
-    local char = LocalPlayer.Character
-    if not char then return end
-    for _, obj in pairs(char:GetDescendants()) do
-        if obj:IsA("BasePart") then obj.CanCollide = false end
-    end
+-- MAIN
+local ws, jp, spinEnabled, spinSpeed, rgbEnabled = 16, 50, false, 360, false
+local function applyStats(char) if char and char:FindFirstChildOfClass("Humanoid") then char.Humanoid.WalkSpeed = ws char.Humanoid.UseJumpPower = true char.Humanoid.JumpPower = jp end end
+WebsHub:CreateSection(MainTab, "Персонаж")
+WebsHub:CreateSlider(MainTab, { Name = "Скорость", Min = 16, Max = 1000, CurrentValue = 16, Callback = function(v) ws = v applyStats(LocalPlayer.Character) end })
+WebsHub:CreateSlider(MainTab, { Name = "Прыжок", Min = 50, Max = 5000, CurrentValue = 50, Callback = function(v) jp = v applyStats(LocalPlayer.Character) end })
+WebsHub:CreateSlider(MainTab, { Name = "Скорость Spin", Min = 0, Max = 5000, CurrentValue = 360, Callback = function(v) spinSpeed = v end })
+WebsHub:CreateToggle(MainTab, { Name = "Spin", CurrentValue = false, Callback = function(s) spinEnabled = s end })
+WebsHub:CreateToggle(MainTab, { Name = "RGB", CurrentValue = false, Callback = function(s) rgbEnabled = s end })
+RunService.Heartbeat:Connect(function(dt)
+    if spinEnabled and LocalPlayer.Character then local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart") if hrp then hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(spinSpeed)*dt, 0) end end
+    if rgbEnabled and LocalPlayer.Character then local col = Color3.fromHSV(tick()%1, 1, 1) for _, obj in pairs(LocalPlayer.Character:GetDescendants()) do if obj:IsA("BasePart") then obj.Color = col end end end
 end)
+WebsHub:CreateSection(MainTab, "Система")
+WebsHub:CreateButton(MainTab, { Name = "🛑 ЗАКРЫТЬ СКРИПТ", Callback = function() HudGui:Destroy() Window.ScreenGui:Destroy() end })
 
-MainTab:CreateSection("Полёт")
-
-local flyEnabled = false
-local flySpeed = 50
-local flyBV = nil
-local currentVel = Vector3.new(0, 0, 0)
-
-MainTab:CreateSlider({
-    Name = "Скорость полёта",
-    Range = {10, 300}, Increment = 5, CurrentValue = 50,
-    Callback = function(v) flySpeed = v end
-})
-
-local function cleanupFly()
-    if flyBV then flyBV:Destroy() flyBV = nil end
-    local char = LocalPlayer.Character
-    if char then
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            local bv = hrp:FindFirstChild("FlyBV")
-            if bv then bv:Destroy() end
-        end
-    end
-    currentVel = Vector3.new(0, 0, 0)
-end
-
-MainTab:CreateToggle({
-    Name = "Полёт (Fly)",
-    CurrentValue = false,
-    Callback = function(state)
-        flyEnabled = state
-        if state then
-            local char = LocalPlayer.Character
-            if not char then return end
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if not hrp then return end
-            currentVel = Vector3.new(0, 0, 0)
-            flyBV = Instance.new("BodyVelocity")
-            flyBV.Name = "FlyBV"
-            flyBV.MaxForce = Vector3.new(1e6, 1e6, 1e6)
-            flyBV.Velocity = Vector3.new(0, 0, 0)
-            flyBV.Parent = hrp
-        else
-            cleanupFly()
-        end
-    end
-})
-
-RunService.RenderStepped:Connect(function(dt)
-    if not flyEnabled then return end
-    local cam = workspace.CurrentCamera
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-
-    if not flyBV or not flyBV.Parent then
-        flyBV = Instance.new("BodyVelocity")
-        flyBV.Name = "FlyBV"
-        flyBV.MaxForce = Vector3.new(1e6, 1e6, 1e6)
-        flyBV.Parent = hrp
-    end
-
-    local move = hum and hum.MoveDirection or Vector3.new(0, 0, 0)
-    local camCF = cam.CFrame
-    local camLook = camCF.LookVector
-    local camRight = camCF.RightVector
-
-    local camForwardFlat = Vector3.new(camLook.X, 0, camLook.Z)
-    if camForwardFlat.Magnitude > 0.01 then camForwardFlat = camForwardFlat.Unit end
-
-    local rightInput = move:Dot(camRight)
-    local forwardInput = move:Dot(camForwardFlat)
-
-    local targetVel = camLook * forwardInput + camRight * rightInput
-    if targetVel.Magnitude > 0.01 then
-        targetVel = targetVel.Unit * flySpeed
-    else
-        targetVel = Vector3.new(0, 0, 0)
-    end
-
-    currentVel = currentVel:Lerp(targetVel, math.clamp(dt * 8, 0, 1))
-    flyBV.Velocity = currentVel
+-- MOVEMENT
+local noclip, fly, flySpeed, flyBV = false, false, 50, nil
+WebsHub:CreateSection(MoveTab, "Noclip")
+WebsHub:CreateToggle(MoveTab, { Name = "Noclip", CurrentValue = false, Callback = function(s) noclip = s end })
+RunService.Stepped:Connect(function() if noclip and LocalPlayer.Character then for _, p in pairs(LocalPlayer.Character:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = false end end end end)
+WebsHub:CreateSection(MoveTab, "Полёт")
+WebsHub:CreateSlider(MoveTab, { Name = "Скорость полёта", Min = 10, Max = 500, CurrentValue = 50, Callback = function(v) flySpeed = v end })
+WebsHub:CreateToggle(MoveTab, { Name = "Fly", CurrentValue = false, Callback = function(s)
+    fly = s
+    if fly and LocalPlayer.Character then flyBV = Instance.new("BodyVelocity", LocalPlayer.Character.HumanoidRootPart) flyBV.MaxForce = Vector3.new(1e6,1e6,1e6) elseif not fly and flyBV then flyBV:Destroy() end
+end })
+RunService.RenderStepped:Connect(function()
+    if fly and flyBV and LocalPlayer.Character then local cam = workspace.CurrentCamera local move = LocalPlayer.Character.Humanoid.MoveDirection flyBV.Velocity = cam.CFrame.LookVector * move.Z * flySpeed + cam.CFrame.RightVector * move.X * flySpeed end
 end)
+WebsHub:CreateSection(MoveTab, "Гравитация")
+WebsHub:CreateSlider(MoveTab, { Name = "Гравитация", Min = 0, Max = 200, CurrentValue = workspace.Gravity, Callback = function(v) workspace.Gravity = v end })
 
--- ============================================
--- ВКЛАДКА RAGE
--- ============================================
-local RageTab = Window:CreateTab("Rage", 4483362458)
-
-RageTab:CreateSection("Aimbot")
-
-local aimPlayers = false
-local aimBots = false
-local aimFOV = 300
-local aimRange = 500
-local aimSmooth = 0.3
-local aimTeamCheck = false
-local aimWallCheck = true
-local aimPart = "Head"
-
-RageTab:CreateToggle({
-    Name = "Aimbot: Игроки",
-    CurrentValue = false,
-    Callback = function(state) aimPlayers = state end
-})
-
-RageTab:CreateToggle({
-    Name = "Aimbot: Боты (NPC)",
-    CurrentValue = false,
-    Callback = function(state) aimBots = state end
-})
-
-RageTab:CreateSlider({
-    Name = "FOV (радиус в пикселях)",
-    Range = {50, 800}, Increment = 10, CurrentValue = 300,
-    Callback = function(v) aimFOV = v end
-})
-
-RageTab:CreateSlider({
-    Name = "Дальность (в метрах)",
-    Range = {50, 2000}, Increment = 50, CurrentValue = 500,
-    Callback = function(v) aimRange = v end
-})
-
-RageTab:CreateSlider({
-    Name = "Плавность (меньше = быстрее)",
-    Range = {0.05, 1}, Increment = 0.05, CurrentValue = 0.3,
-    Callback = function(v) aimSmooth = v end
-})
-
-RageTab:CreateToggle({
-    Name = "Проверка команды (для игроков)",
-    CurrentValue = false,
-    Callback = function(state) aimTeamCheck = state end
-})
-
-RageTab:CreateToggle({
-    Name = "Проверка стен",
-    CurrentValue = true,
-    Callback = function(state) aimWallCheck = state end
-})
-
-RageTab:CreateDropdown({
-    Name = "Часть тела",
-    Options = {"Head", "HumanoidRootPart", "UpperTorso", "LowerTorso"},
-    CurrentOption = {"Head"},
-    Callback = function(opt) aimPart = opt[1] end
-})
-
-local function hasLineOfSight(targetPart)
-    local cam = workspace.CurrentCamera
-    local origin = cam.CFrame.Position
-    local dir = (targetPart.Position - origin)
-    local params = RaycastParams.new()
-    params.FilterType = Enum.RaycastFilterType.Exclude
-    params.FilterDescendantsInstances = {LocalPlayer.Character, targetPart.Parent}
-    local result = workspace:Raycast(origin, dir, params)
-    return result == nil
-end
-
-local function isNPC(model)
-    for _, plr in pairs(Players:GetPlayers()) do
-        if plr.Character == model then return false end
-    end
-    return true
-end
-
-local function getBots()
-    local bots = {}
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("Model") then
-            local hum = obj:FindFirstChildOfClass("Humanoid")
-            if hum and hum.Health > 0 and isNPC(obj) then
-                table.insert(bots, obj)
-            end
-        end
-    end
-    return bots
-end
-
-local function findPart(model)
-    local names = {aimPart, "Head", "UpperTorso", "Torso", "HumanoidRootPart"}
-    for _, n in ipairs(names) do
-        local p = model:FindFirstChild(n)
-        if p and p:IsA("BasePart") then return p end
-    end
-    return nil
-end
-
-local function getClosestTarget()
-    local cam = workspace.CurrentCamera
-    local camPos = cam.CFrame.Position
-    local center = Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2)
-    local closest = nil
-    local closestScore = aimFOV
-
-    local function checkModel(model)
-        local part = findPart(model)
-        if not part then return end
-        local dist3D = (part.Position - camPos).Magnitude
-        if dist3D > aimRange then return end
-        local screenPos, onScreen = cam:WorldToViewportPoint(part.Position)
-        if not onScreen then return end
-        local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
-        if screenDist < closestScore then
-            if not aimWallCheck or hasLineOfSight(part) then
-                closestScore = screenDist
-                closest = part
-            end
-        end
-    end
-
-    if aimPlayers then
-        for _, plr in pairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer and plr.Character then
-                local hum = plr.Character:FindFirstChildOfClass("Humanoid")
-                if hum and hum.Health > 0 then
-                    if not (aimTeamCheck and plr.Team and LocalPlayer.Team and plr.Team == LocalPlayer.Team) then
-                        checkModel(plr.Character)
-                    end
-                end
-            end
-        end
-    end
-
-    if aimBots then
-        for _, bot in pairs(getBots()) do checkModel(bot) end
-    end
-
-    return closest
-end
-
-RunService:BindToRenderStep("AimbotCamera", Enum.RenderPriority.Camera.Value + 1, function()
-    if not aimPlayers and not aimBots then return end
-    local target = getClosestTarget()
-    if not target then return end
-    local cam = workspace.CurrentCamera
-    local camCF = cam.CFrame
-    local newCF = CFrame.new(camCF.Position, target.Position)
-    cam.CFrame = camCF:Lerp(newCF, math.clamp(aimSmooth, 0, 1))
-end)
-
-RageTab:CreateSection("Kill Aura")
-
-local killAuraEnabled = false
-local killAuraRange = 20
-local killAuraDmg = 100
-local killAuraDelay = 0.1
-
-RageTab:CreateToggle({
-    Name = "Kill Aura",
-    CurrentValue = false,
-    Callback = function(state) killAuraEnabled = state end
-})
-
-RageTab:CreateSlider({
-    Name = "Радиус",
-    Range = {5, 100}, Increment = 1, CurrentValue = 20,
-    Callback = function(v) killAuraRange = v end
-})
-
-RageTab:CreateSlider({
-    Name = "Урон за тик",
-    Range = {5, 1000}, Increment = 5, CurrentValue = 100,
-    Callback = function(v) killAuraDmg = v end
-})
-
-RageTab:CreateSlider({
-    Name = "Задержка между тиками",
-    Range = {0.05, 1}, Increment = 0.05, CurrentValue = 0.1,
-    Callback = function(v) killAuraDelay = v end
-})
-
-task.spawn(function()
-    while task.wait(killAuraDelay) do
-        if killAuraEnabled then
-            local char = LocalPlayer.Character
-            if char then
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    for _, obj in pairs(workspace:GetDescendants()) do
-                        if obj:IsA("Model") and obj ~= char then
-                            local hum = obj:FindFirstChildOfClass("Humanoid")
-                            local thp = obj:FindFirstChild("HumanoidRootPart")
-                            if hum and thp and hum.Health > 0 and isNPC(obj) then
-                                local dist = (thp.Position - hrp.Position).Magnitude
-                                if dist <= killAuraRange then
-                                    pcall(function() hum:TakeDamage(killAuraDmg) end)
-                                    pcall(function() hum.Health = math.max(0, hum.Health - killAuraDmg) end)
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-end)
-
-RageTab:CreateSection("Бесконечное HP")
-
-local infHPEnabled = false
-local deathSoundNames = {"death", "die", "hurt", "hit", "damage", "scream", "gasp", "pain"}
-
-local function stopDeathEffects()
-    for _, s in pairs(game:GetService("SoundService"):GetDescendants()) do
-        if s:IsA("Sound") and s.Playing then
-            local n = s.Name:lower()
-            for _, key in ipairs(deathSoundNames) do
-                if n:find(key) then pcall(function() s:Stop() s.Volume = 0 end) break end
-            end
-        end
-    end
-    for _, sg in pairs(game:GetService("SoundService"):GetDescendants()) do
-        if sg:IsA("SoundGroup") and sg.Volume > 0 then
-            pcall(function() sg.Volume = 0 end)
-        end
-    end
-    local char = LocalPlayer.Character
-    if char then
-        for _, s in pairs(char:GetDescendants()) do
-            if s:IsA("Sound") and s.Playing then
-                pcall(function() s:Stop() s.Volume = 0 end)
-            end
-        end
-    end
-    local L = game:GetService("Lighting")
-    for _, e in pairs(L:GetChildren()) do
-        if e:IsA("BlurEffect") and e.Enabled then e.Enabled = false e.Size = 0 end
-        if e:IsA("ColorCorrectionEffect") and e.Enabled then e.Enabled = false end
-    end
-end
-
-local function hookChar(char)
-    if not char then return end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
-    hum.HealthChanged:Connect(function()
-        if infHPEnabled then hum.Health = hum.MaxHealth; stopDeathEffects() end
-    end)
-    hum.Died:Connect(function()
-        if infHPEnabled then hum.Health = hum.MaxHealth; stopDeathEffects() end
-    end)
-end
-
-task.spawn(function()
-    while task.wait(0.01) do
-        if infHPEnabled then
-            local char = LocalPlayer.Character
-            if char then
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                if hum then
-                    if hum.Health < hum.MaxHealth then hum.Health = hum.MaxHealth end
-                    if hum.MaxHealth ~= math.huge then hum.MaxHealth = math.huge end
-                end
-            end
-            stopDeathEffects()
-        end
-    end
-end)
-
-RageTab:CreateToggle({
-    Name = "Бесконечное HP",
-    CurrentValue = false,
-    Callback = function(state)
-        infHPEnabled = state
-        local char = LocalPlayer.Character
-        if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                hum.MaxHealth = state and math.huge or 100
-                hum.Health = state and math.huge or 100
-            end
-        end
-    end
-})
-
-RageTab:CreateSection("Невидимость")
-
-local invisiblePlayers = false
-local invisibleBots = false
-local invisLoopRunning = false
-
-local function applyInvisibility(state)
-    local char = LocalPlayer.Character
-    if not char then return end
-    for _, obj in pairs(char:GetDescendants()) do
-        if obj:IsA("BasePart") or obj:IsA("Decal") then
-            obj.Transparency = state and 1 or 0
-            obj.LocalTransparencyModifier = state and 1 or 0
-        end
-    end
-end
-
-local function startInvisLoop()
-    if invisLoopRunning then return end
-    invisLoopRunning = true
-    task.spawn(function()
-        while invisLoopRunning do
-            if invisiblePlayers or invisibleBots then applyInvisibility(true) end
-            task.wait(0.1)
-        end
-    end)
-end
-
-RageTab:CreateToggle({
-    Name = "Невидимость от игроков",
-    CurrentValue = false,
-    Callback = function(state)
-        invisiblePlayers = state
-        applyInvisibility(state)
-        if state then startInvisLoop() end
-    end
-})
-
-RageTab:CreateToggle({
-    Name = "Невидимость от ботов",
-    CurrentValue = false,
-    Callback = function(state)
-        invisibleBots = state
-        applyInvisibility(state)
-        if state then startInvisLoop() end
-    end
-})
-
-RageTab:CreateSection("ESP")
-
-local espBox = false
-local espName = false
-local espHealth = false
-local espTracer = false
-local espBoxSize = 3
-
-local espObjects = {}
-local tracerLines = {}
-
-local function clearESP(plr)
-    if espObjects[plr] then
-        for _, obj in pairs(espObjects[plr]) do
-            if obj then obj:Destroy() end
-        end
-        espObjects[plr] = nil
-    end
-    if tracerLines[plr] then
-        pcall(function() tracerLines[plr]:Remove() end)
-        tracerLines[plr] = nil
-    end
-end
-
+-- ESP
+local espBox, espName, espTracer, espBoxSize, espObjects, tracerLines = false, false, false, 3, {}, {}
+local function clearESP(plr) if espObjects[plr] then for _, obj in pairs(espObjects[plr]) do obj:Destroy() end espObjects[plr] = nil end if tracerLines[plr] then pcall(function() tracerLines[plr]:Remove() end) tracerLines[plr] = nil end end
 local function createESP(plr)
-    clearESP(plr)
-    espObjects[plr] = {}
-    local char = plr.Character
-    if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-
-    if espBox then
-        local box = Instance.new("BoxHandleAdornment")
-        box.Name = "ESP_Box"
-        box.Size = Vector3.new(espBoxSize, espBoxSize * 1.8, espBoxSize)
-        box.Adornee = hrp
-        box.AlwaysOnTop = true
-        box.ZIndex = 5
-        box.Transparency = 0.5
-        box.Color3 = Color3.fromRGB(255, 0, 0)
-        box.Parent = hrp
-        table.insert(espObjects[plr], box)
-    end
-
-    if espName then
-        local bg = Instance.new("BillboardGui")
-        bg.Name = "ESP_Name"
-        bg.Size = UDim2.new(0, 100, 0, 20)
-        bg.StudsOffset = Vector3.new(0, 3, 0)
-        bg.AlwaysOnTop = true
-        bg.Adornee = hrp
-        bg.Parent = hrp
-        local txt = Instance.new("TextLabel")
-        txt.Size = UDim2.new(1, 0, 1, 0)
-        txt.BackgroundTransparency = 1
-        txt.Text = plr.Name
-        txt.TextColor3 = Color3.fromRGB(255, 255, 255)
-        txt.TextStrokeTransparency = 0
-        txt.Font = Enum.Font.SourceSansBold
-        txt.TextSize = 14
-        txt.Parent = bg
-        table.insert(espObjects[plr], bg)
-    end
-
-    if espHealth then
-        local bg = Instance.new("BillboardGui")
-        bg.Name = "ESP_Health"
-        bg.Size = UDim2.new(0, 100, 0, 10)
-        bg.StudsOffset = Vector3.new(0, 2.4, 0)
-        bg.AlwaysOnTop = true
-        bg.Adornee = hrp
-        bg.Parent = hrp
-        local bar = Instance.new("Frame")
-        bar.Size = UDim2.new(1, 0, 1, 0)
-        bar.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-        bar.BorderSizePixel = 0
-        bar.Parent = bg
-        local humanoid = char:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            local function updateBar()
-                bar.Size = UDim2.new(humanoid.Health / humanoid.MaxHealth, 0, 1, 0)
-            end
-            humanoid.HealthChanged:Connect(updateBar)
-            updateBar()
-        end
-        table.insert(espObjects[plr], bg)
-    end
+    clearESP(plr) espObjects[plr] = {} local char = plr.Character if not char then return end local hrp = char:FindFirstChild("HumanoidRootPart") if not hrp then return end
+    if espBox then local box = Instance.new("BoxHandleAdornment", hrp) box.Size = Vector3.new(espBoxSize, espBoxSize*1.8, espBoxSize) box.Adornee = hrp box.AlwaysOnTop = true box.Color3 = Color3.fromRGB(255,0,0) table.insert(espObjects[plr], box) end
+    if espName then local bg = Instance.new("BillboardGui", hrp) bg.Size = UDim2.new(0,100,0,20) bg.StudsOffset = Vector3.new(0,3,0) bg.AlwaysOnTop = true local txt = Instance.new("TextLabel", bg) txt.Size = UDim2.new(1,0,1,0) txt.BackgroundTransparency = 1 txt.Text = plr.Name txt.TextColor3 = Color3.fromRGB(255,255,255) txt.Font = Enum.Font.SourceSansBold table.insert(espObjects[plr], bg) end
 end
-
-local function updateAllESP()
-    for _, plr in pairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer then createESP(plr) end
-    end
-end
-
+local function updateAllESP() for _, plr in pairs(Players:GetPlayers()) do if plr ~= LocalPlayer then createESP(plr) end end end
 RunService.RenderStepped:Connect(function()
     for _, plr in pairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer then
             if espTracer and Drawing then
-                if not tracerLines[plr] then
-                    local line = Drawing.new("Line")
-                    line.Thickness = 2
-                    line.Color = Color3.fromRGB(255, 255, 0)
-                    line.Transparency = 1
-                    line.Visible = false
-                    tracerLines[plr] = line
-                end
-                local line = tracerLines[plr]
-                local char = plr.Character
-                if char and char:FindFirstChild("HumanoidRootPart") then
-                    local cam = workspace.CurrentCamera
-                    local pos, onScreen = cam:WorldToViewportPoint(char.HumanoidRootPart.Position)
-                    if onScreen then
-                        line.From = Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y)
-                        line.To = Vector2.new(pos.X, pos.Y)
-                        line.Visible = true
-                    else
-                        line.Visible = false
-                    end
-                else
-                    line.Visible = false
-                end
-            elseif tracerLines[plr] then
-                pcall(function() tracerLines[plr]:Remove() end)
-                tracerLines[plr] = nil
-            end
+                if not tracerLines[plr] then local line = Drawing.new("Line") line.Thickness = 2 line.Color = Color3.fromRGB(255,255,0) tracerLines[plr] = line end
+                local line = tracerLines[plr] local char = plr.Character if char and char:FindFirstChild("HumanoidRootPart") then local cam = workspace.CurrentCamera local pos, onScreen = cam:WorldToViewportPoint(char.HumanoidRootPart.Position) if onScreen then line.From = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y) line.To = Vector2.new(pos.X, pos.Y) line.Visible = true else line.Visible = false end else line.Visible = false end
+            elseif tracerLines[plr] then pcall(function() tracerLines[plr]:Remove() end) tracerLines[plr] = nil end
         end
     end
 end)
+WebsHub:CreateSection(EspTab, "ESP Настройки")
+WebsHub:CreateToggle(EspTab, { Name = "ESP Бокс", CurrentValue = false, Callback = function(s) espBox = s updateAllESP() end })
+WebsHub:CreateToggle(EspTab, { Name = "ESP Ники", CurrentValue = false, Callback = function(s) espName = s updateAllESP() end })
+WebsHub:CreateToggle(EspTab, { Name = "ESP Трейсер", CurrentValue = false, Callback = function(s) espTracer = s end })
+Players.PlayerAdded:Connect(function(plr) task.wait(1) createESP(plr) end) Players.PlayerRemoving:Connect(function(plr) clearESP(plr) end)
 
-RageTab:CreateToggle({
-    Name = "ESP: Бокс",
-    CurrentValue = false,
-    Callback = function(state) espBox = state; updateAllESP() end
-})
-
-RageTab:CreateToggle({
-    Name = "ESP: Ники",
-    CurrentValue = false,
-    Callback = function(state) espName = state; updateAllESP() end
-})
-
-RageTab:CreateToggle({
-    Name = "ESP: Здоровье",
-    CurrentValue = false,
-    Callback = function(state) espHealth = state; updateAllESP() end
-})
-
-RageTab:CreateToggle({
-    Name = "ESP: Трейсер",
-    CurrentValue = false,
-    Callback = function(state) espTracer = state end
-})
-
-RageTab:CreateSlider({
-    Name = "ESP: Размер бокса",
-    Range = {1, 10}, Increment = 0.5, CurrentValue = 3,
-    Callback = function(v) espBoxSize = v; updateAllESP() end
-})
-
-Players.PlayerAdded:Connect(function(plr) task.wait(1); createESP(plr) end)
-Players.PlayerRemoving:Connect(function(plr) clearESP(plr) end)
-
--- ============================================
--- ВКЛАДКА GAMES
--- ============================================
-local GamesTab = Window:CreateTab("Games", 4483362458)
-local DoorsTab = GamesTab:CreateTab("Doors", 4483362458)
-
--- ESP СУЩНОСТИ
-local doorsEntityESP = false
-
-local entityNames = {"Rush", "Ambush", "Seek", "Figure", "Screech", "Eyes", "Hide", "Glitch", "Jack"}
-
-local function isEntity(name)
-    for _, n in ipairs(entityNames) do
-        if name:lower():find(n:lower()) then return true end
-    end
-    return false
+-- AIMBOT
+local aimEnabled, aimFOV, aimRange, aimSmooth, aimPart = false, 300, 500, 0.3, "Head"
+WebsHub:CreateSection(AimTab, "Аимбот")
+WebsHub:CreateToggle(AimTab, { Name = "Аимбот", CurrentValue = false, Callback = function(s) aimEnabled = s end })
+WebsHub:CreateSlider(AimTab, { Name = "FOV", Min = 50, Max = 1500, CurrentValue = 300, Callback = function(v) aimFOV = v end })
+WebsHub:CreateSlider(AimTab, { Name = "Плавность", Min = 0.02, Max = 1, CurrentValue = 0.3, Callback = function(v) aimSmooth = v end })
+local function getClosestTarget()
+    local cam = workspace.CurrentCamera local camPos = cam.CFrame.Position local center = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2) local closest, closestScore = nil, aimFOV
+    for _, plr in pairs(Players:GetPlayers()) do if plr ~= LocalPlayer and plr.Character then local hum = plr.Character:FindFirstChildOfClass("Humanoid") if hum and hum.Health > 0 then local part = plr.Character:FindFirstChild(aimPart) or plr.Character:FindFirstChild("Head") if part then if (part.Position - camPos).Magnitude <= aimRange then local screenPos, onScreen = cam:WorldToViewportPoint(part.Position) if onScreen then local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude if screenDist < closestScore then closestScore = screenDist closest = part end end end end end end end
+    return closest
 end
-
-DoorsTab:CreateToggle({
-    Name = "ESP: Сущности",
-    CurrentValue = false,
-    Callback = function(state)
-        doorsEntityESP = state
-        if state then
-            for _, obj in pairs(workspace:GetDescendants()) do
-                if obj:IsA("Model") and isEntity(obj.Name) then
-                    if not obj:FindFirstChild("EntityESP") then
-                        local h = Instance.new("Highlight")
-                        h.Name = "EntityESP"
-                        h.Adornee = obj
-                        h.FillColor = Color3.fromRGB(255, 0, 0)
-                        h.FillTransparency = 0.5
-                        h.OutlineColor = Color3.fromRGB(255, 255, 255)
-                        h.Parent = obj
-                    end
-                end
-            end
-        else
-            for _, obj in pairs(workspace:GetDescendants()) do
-                local h = obj:FindFirstChild("EntityESP")
-                if h then h:Destroy() end
-            end
-        end
-    end
-})
-
--- ESP ПРЕДМЕТЫ
-local doorsItemESP = false
-
-local itemNames = {"Key", "Lighter", "Vitamin", "Crucifix", "Book", "Lockpick", "Bandage", "Flashlight", "Battery"}
-
-local function isItem(name)
-    for _, n in ipairs(itemNames) do
-        if name:lower():find(n:lower()) then return true end
-    end
-    return false
-end
-
-DoorsTab:CreateToggle({
-    Name = "ESP: Предметы",
-    CurrentValue = false,
-    Callback = function(state)
-        doorsItemESP = state
-        if state then
-            for _, obj in pairs(workspace:GetDescendants()) do
-                if obj:IsA("Model") and isItem(obj.Name) then
-                    if not obj:FindFirstChild("ItemESP") then
-                        local h = Instance.new("Highlight")
-                        h.Name = "ItemESP"
-                        h.Adornee = obj
-                        h.FillColor = Color3.fromRGB(0, 255, 0)
-                        h.FillTransparency = 0.5
-                        h.OutlineColor = Color3.fromRGB(255, 255, 255)
-                        h.Parent = obj
-                    end
-                end
-            end
-        else
-            for _, obj in pairs(workspace:GetDescendants()) do
-                local h = obj:FindFirstChild("ItemESP")
-                if h then h:Destroy() end
-            end
-        end
-    end
-})
-
--- ESP ДВЕРИ
-local doorsDoorESP = false
-
-DoorsTab:CreateToggle({
-    Name = "ESP: Двери и рычаги",
-    CurrentValue = false,
-    Callback = function(state)
-        doorsDoorESP = state
-        if state then
-            for _, obj in pairs(workspace:GetDescendants()) do
-                if obj:IsA("Model") and (obj.Name:lower():find("door") or obj.Name:lower():find("lever")) then
-                    if not obj:FindFirstChild("DoorESP") then
-                        local h = Instance.new("Highlight")
-                        h.Name = "DoorESP"
-                        h.Adornee = obj
-                        h.FillColor = Color3.fromRGB(0, 150, 255)
-                        h.FillTransparency = 0.5
-                        h.OutlineColor = Color3.fromRGB(255, 255, 255)
-                        h.Parent = obj
-                    end
-                end
-            end
-        else
-            for _, obj in pairs(workspace:GetDescendants()) do
-                local h = obj:FindFirstChild("DoorESP")
-                if h then h:Destroy() end
-            end
-        end
-    end
-})
-
--- AUTO HIDE
-local doorsAutoHide = false
-
-DoorsTab:CreateToggle({
-    Name = "Auto Hide (в шкаф от Rush/Ambush)",
-    CurrentValue = false,
-    Callback = function(state) doorsAutoHide = state end
-})
-
-task.spawn(function()
-    while task.wait(0.1) do
-        if doorsAutoHide then
-            local char = LocalPlayer.Character
-            if char then
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    for _, obj in pairs(workspace:GetDescendants()) do
-                        if obj:IsA("Model") and (obj.Name:lower():find("rush") or obj.Name:lower():find("ambush")) then
-                            local dist = (obj:GetPivot().Position - hrp.Position).Magnitude
-                            if dist < 60 then
-                                local closest, cd = nil, 999
-                                for _, spot in pairs(workspace:GetDescendants()) do
-                                    if spot:IsA("Model") and (spot.Name:lower():find("closet") or spot.Name:lower():find("hiding") or spot.Name:lower():find("locker")) then
-                                        local d = (spot:GetPivot().Position - hrp.Position).Magnitude
-                                        if d < cd then cd = d closest = spot end
-                                    end
-                                end
-                                if closest then
-                                    hrp.CFrame = CFrame.new(closest:GetPivot().Position + Vector3.new(0, 2, 0))
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
+RunService:BindToRenderStep("AimCam", Enum.RenderPriority.Camera.Value + 1, function()
+    if not aimEnabled then return end local target = getClosestTarget() if not target then return end local cam = workspace.CurrentCamera cam.CFrame = cam.CFrame:Lerp(CFrame.new(cam.CFrame.Position, target.Position), math.clamp(aimSmooth, 0, 1))
 end)
 
--- ANTI SCREECH
-local doorsAntiScreech = false
-
-DoorsTab:CreateToggle({
-    Name = "Anti Screech",
-    CurrentValue = false,
-    Callback = function(state) doorsAntiScreech = state end
-})
-
-task.spawn(function()
-    while task.wait(0.3) do
-        if doorsAntiScreech then
-            for _, obj in pairs(workspace:GetDescendants()) do
-                if obj:IsA("Model") and obj.Name:lower():find("screech") then
-                    pcall(function() obj:Destroy() end)
-                end
-            end
-        end
-    end
-end)
-
--- GODMODE
-local doorsGodmode = false
-
-DoorsTab:CreateToggle({
-    Name = "Godmode (бесконечное HP)",
-    CurrentValue = false,
-    Callback = function(state)
-        doorsGodmode = state
-        local char = LocalPlayer.Character
-        if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                hum.MaxHealth = state and math.huge or 100
-                hum.Health = state and math.huge or 100
-            end
-        end
-    end
-})
-
-task.spawn(function()
-    while task.wait(0.1) do
-        if doorsGodmode then
-            local char = LocalPlayer.Character
-            if char then
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                if hum then
-                    hum.MaxHealth = math.huge
-                    hum.Health = math.huge
-                end
-            end
-        end
-    end
-end)
-
--- ТЕЛЕПОРТ К ВЫХОДУ
-local doorsExitTP = false
-
-DoorsTab:CreateToggle({
-    Name = "Телепорт к выходу (авто)",
-    CurrentValue = false,
-    Callback = function(state) doorsExitTP = state end
-})
-
-task.spawn(function()
-    while task.wait(0.5) do
-        if doorsExitTP then
-            local char = LocalPlayer.Character
-            if char then
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    local exit, ed = nil, 9999
-                    for _, obj in pairs(workspace:GetDescendants()) do
-                        if obj:IsA("BasePart") and (obj.Name:lower():find("exit") or obj.Name:lower():find("door150") or obj.Name:lower():find("exitdoor")) then
-                            local d = (obj.Position - hrp.Position).Magnitude
-                            if d < ed then ed = d exit = obj end
-                        end
-                    end
-                    if exit then
-                        hrp.CFrame = CFrame.new(exit.Position + Vector3.new(0, 3, 0))
-                    end
-                end
-            end
-        end
-    end
-end)
-
--- ============================================
--- ВКЛАДКА TELEPORT
--- ============================================
-local TeleportTab = Window:CreateTab("Teleport", 4483362458)
+-- TELEPORT
 local savedPoints = {}
-
-local function doTeleport(targetPos)
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    hrp.CFrame = CFrame.new(targetPos + Vector3.new(0, 3, 0))
-end
-
-local function saveCurrentPosition(index)
-    local char = LocalPlayer.Character
-    if char and char:FindFirstChild("HumanoidRootPart") then
-        savedPoints[index] = char.HumanoidRootPart.Position
-        Rayfield:Notify({ Title = "Сохранено", Content = "Точка " .. index, Duration = 2 })
-    end
-end
-
-local function teleportToPoint(index, silent)
-    local p = savedPoints[index]
-    if p then
-        doTeleport(p)
-        if not silent then
-            Rayfield:Notify({ Title = "Телепорт", Content = "Точка " .. index, Duration = 2 })
-        end
-        return true
-    end
-    return false
-end
-
-TeleportTab:CreateSection("Сохранение и телепорт")
+WebsHub:CreateSection(TpTab, "Сохранение точек")
 for i = 1, 5 do
-    TeleportTab:CreateButton({
-        Name = "Сохранить точку " .. i,
-        Callback = function() saveCurrentPosition(i) end
-    })
-    TeleportTab:CreateButton({
-        Name = "Телепорт к точке " .. i,
-        Callback = function() teleportToPoint(i) end
-    })
+    WebsHub:CreateButton(TpTab, { Name = "Сохранить точку " .. i, Callback = function() if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then savedPoints[i] = LocalPlayer.Character.HumanoidRootPart.Position WebsHub:Notify("Сохранено", "Точка " .. i, 2) end end })
+    WebsHub:CreateButton(TpTab, { Name = "ТП к точке " .. i, Callback = function() if savedPoints[i] and LocalPlayer.Character then LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(savedPoints[i] + Vector3.new(0,3,0)) end end })
 end
 
-TeleportTab:CreateSection("Свои координаты")
+-- PLAYERS
+WebsHub:CreateSection(PlrTab, "Действия с ближайшим")
+WebsHub:CreateButton(PlrTab, { Name = "🚀 ТП к ближайшему", Callback = function()
+    local closest, dist = nil, math.huge
+    for _, p in pairs(Players:GetPlayers()) do if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then local d = (p.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude if d < dist then dist = d closest = p.Character.HumanoidRootPart end end end
+    if closest then LocalPlayer.Character.HumanoidRootPart.CFrame = closest.CFrame + Vector3.new(0,3,0) end
+end })
+WebsHub:CreateButton(PlrTab, { Name = "🎣 Притянуть ближайшего", Callback = function()
+    local closest, dist = nil, math.huge
+    for _, p in pairs(Players:GetPlayers()) do if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then local d = (p.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude if d < dist then dist = d closest = p.Character.HumanoidRootPart end end end
+    if closest then local bp = Instance.new("BodyPosition", closest) bp.MaxForce = Vector3.new(math.huge,math.huge,math.huge) bp.Position = LocalPlayer.Character.HumanoidRootPart.Position task.delay(3, function() bp:Destroy() end) end
+end })
+WebsHub:CreateButton(PlrTab, { Name = "💀 Убить ближайшего", Callback = function()
+    local closest, dist = nil, math.huge
+    for _, p in pairs(Players:GetPlayers()) do if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then local d = (p.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude if d < dist then dist = d closest = p.Character:FindFirstChildOfClass("Humanoid") end end end
+    if closest then closest.Health = 0 end
+end })
+WebsHub:CreateButton(PlrTab, { Name = "🚀 Подбросить всех", Callback = function() for _, p in pairs(Players:GetPlayers()) do if p ~= LocalPlayer and p.Character then p.Character:PivotTo(CFrame.new(p.Character.HumanoidRootPart.Position.X, 5000, p.Character.HumanoidRootPart.Position.Z)) end end end })
 
-local selectedSlot = 1
-local manualX, manualY, manualZ = nil, nil, nil
+-- RAGE
+local invisibleEnabled = false
+WebsHub:CreateSection(RageTab, "Невидимость")
+WebsHub:CreateToggle(RageTab, { Name = "Включить", CurrentValue = false, Callback = function(s) invisibleEnabled = s end })
+task.spawn(function() while task.wait(0.1) do if invisibleEnabled and LocalPlayer.Character then for _, obj in pairs(LocalPlayer.Character:GetDescendants()) do if obj:IsA("BasePart") then obj.Transparency = 1 end end end end end)
 
-TeleportTab:CreateDropdown({
-    Name = "Слот", Options = {"1","2","3","4","5"}, CurrentOption = {"1"},
-    Callback = function(opt) selectedSlot = tonumber(opt[1]) end
-})
+-- VISUAL
+local origBrightness, origClockTime, origAmbient, origOutdoor, origFogEnd, origFogStart, origShadows = Lighting.Brightness, Lighting.ClockTime, Lighting.Ambient, Lighting.OutdoorAmbient, Lighting.FogEnd, Lighting.FogStart, Lighting.GlobalShadows
+WebsHub:CreateSection(VisTab, "Графика")
+WebsHub:CreateToggle(VisTab, { Name = "Улучшенная графика", CurrentValue = false, Callback = function(s)
+    if s then Lighting.Brightness = 3 Lighting.ClockTime = 14 Lighting.Ambient = Color3.fromRGB(180,180,180) Lighting.OutdoorAmbient = Color3.fromRGB(180,180,180) Lighting.FogEnd = 100000 Lighting.FogStart = 100000 Lighting.GlobalShadows = false
+    else Lighting.Brightness = origBrightness Lighting.ClockTime = origClockTime Lighting.Ambient = origAmbient Lighting.OutdoorAmbient = origOutdoor Lighting.FogEnd = origFogEnd Lighting.FogStart = origFogStart Lighting.GlobalShadows = origShadows end
+end })
 
-TeleportTab:CreateInput({
-    Name = "Координата X", PlaceholderText = "например 100",
-    RemoveTextAfterFocusLost = false,
-    Callback = function(txt) manualX = tonumber(txt) end
-})
+-- UTIL
+WebsHub:CreateSection(UtilTab, "Утилиты")
+LocalPlayer.Idled:Connect(function() VirtualUser:CaptureController() VirtualUser:ClickButton2(Vector2.new()) end)
+WebsHub:CreateButton(UtilTab, { Name = "🔄 Server Hop", Callback = function()
+    local ts = game:GetService("TeleportService") local placeId = game.PlaceId
+    pcall(function() local servers = game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..placeId.."/servers/Public?sortOrder=Asc&limit=100")) for _, s in pairs(servers.data) do if s.playing < s.maxPlayers and s.id ~= game.JobId then ts:TeleportToPlaceInstance(placeId, s.id, LocalPlayer) break end end end)
+end })
+WebsHub:CreateButton(UtilTab, { Name = "🔁 Rejoin", Callback = function() game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer) end })
 
-TeleportTab:CreateInput({
-    Name = "Координата Y", PlaceholderText = "например 50",
-    RemoveTextAfterFocusLost = false,
-    Callback = function(txt) manualY = tonumber(txt) end
-})
-
-TeleportTab:CreateInput({
-    Name = "Координата Z", PlaceholderText = "например -200",
-    RemoveTextAfterFocusLost = false,
-    Callback = function(txt) manualZ = tonumber(txt) end
-})
-
-TeleportTab:CreateButton({
-    Name = "Сохранить координаты в слот",
-    Callback = function()
-        if manualX and manualY and manualZ then
-            savedPoints[selectedSlot] = Vector3.new(manualX, manualY, manualZ)
-            Rayfield:Notify({
-                Title = "Сохранено",
-                Content = "Слот " .. selectedSlot .. ": " .. manualX .. ", " .. manualY .. ", " .. manualZ,
-                Duration = 3
-            })
-        else
-            Rayfield:Notify({ Title = "Ошибка", Content = "Введи X, Y и Z", Duration = 3 })
-        end
-    end
-})
-
-TeleportTab:CreateSection("Комбо-телепорт (бесконечный)")
-
-local comboRunning = false
-local comboDelay = 1
-
-TeleportTab:CreateSlider({
-    Name = "Пауза между точками",
-    Range = {0.2, 5}, Increment = 0.2, Suffix = " с", CurrentValue = 1,
-    Callback = function(v) comboDelay = v end
-})
-
-TeleportTab:CreateButton({
-    Name = "Запустить комбо (1 → 5, повтор)",
-    Callback = function()
-        if comboRunning then return end
-        comboRunning = true
-        task.spawn(function()
-            while comboRunning do
-                for i = 1, 5 do
-                    if not comboRunning then break end
-                    if savedPoints[i] then
-                        teleportToPoint(i, true)
-                        task.wait(comboDelay)
-                    end
-                end
-            end
-        end)
-    end
-})
-
-TeleportTab:CreateButton({
-    Name = "Стоп комбо",
-    Callback = function() comboRunning = false end
-})
-
--- ============================================
--- ПРИ РЕСПАВНЕ
--- ============================================
-LocalPlayer.CharacterAdded:Connect(function(char)
-    task.wait(0.5)
-    applyStats(char)
-    hookChar(char)
-    if invisiblePlayers or invisibleBots then
-        task.wait(0.3)
-        applyInvisibility(true)
-    end
-end)
-
-if LocalPlayer.Character then
-    applyStats(LocalPlayer.Character)
-    hookChar(LocalPlayer.Character)
-end
-
--- ============================================
--- УВЕДОМЛЕНИЕ
--- ============================================
-Rayfield:Notify({
-    Title = "Скрипт загружен",
-    Content = "Вкладки: Main, Rage, Games (Doors), Teleport",
-    Duration = 4
-})
+Window:CreateMinimizeButton(UDim2.new(0, 20, 0.5, -17))
+WebsHub:Notify("WebsHub", "Универсал загружен!", 4)
