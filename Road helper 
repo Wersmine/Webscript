@@ -1,46 +1,47 @@
 -- ============================================
--- ROAD HELPER v5.1 ULTIMATE (Свой UI + FPS + Пауза)
+-- A LONG FLIGHT v7.0 ULTIMATE (Standalone)
+-- Свой UI + Fly (Пауза) + God Mode + Trigger + ESP
 -- ============================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local Lighting = game:GetService("Lighting")
 local UserInputService = game:GetService("UserInputService")
+local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 
 -- НАСТРОЙКИ
 local flyEnabled = false
-local flySpeed = 1000
-local roadY = 1000
-local roadZ = -900
-local roadX = 150
-
-local tpEnabled = false
-local tpStep = 10000
-local tpDelay = 0.5
-
--- Таймеры для паузы
+local flySpeed = 50
 local flyTimeCounter = 0
 local isPaused = false
 
+local godModeEnabled = false
+local triggerEnabled = false
+local triggerDelay = 0.1
+local triggerCooldown = 0
+local triggerRange = 150
+
+local aimEnabled = false
+local espPlayersEnabled = false
+local espBotsEnabled = false
+
 -- ============================================
--- СОЗДАНИЕ ИНТЕРФЕЙСА (Свой UI)
+-- СОЗДАНИЕ ИНТЕРФЕЙСА (UI)
 -- ============================================
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Parent = game:GetService("CoreGui")
-ScreenGui.Name = "RoadHelperUI"
+ScreenGui.Name = "ALF_UI"
 ScreenGui.ResetOnSpawn = false
 
--- Главное окно
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 350, 0, 300)
-MainFrame.Position = UDim2.new(0.5, -175, 0.5, -150)
+MainFrame.Size = UDim2.new(0, 380, 0, 320)
+MainFrame.Position = UDim2.new(0.5, -190, 0.5, -160)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BorderSizePixel = 0
 MainFrame.Parent = ScreenGui
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
 local MainStroke = Instance.new("UIStroke", MainFrame)
-MainStroke.Color = Color3.fromRGB(0, 150, 255)
+MainStroke.Color = Color3.fromRGB(255, 50, 50) -- Красный цвет для A Long Flight
 MainStroke.Thickness = 2
 
 -- Заголовок (Перетаскивание)
@@ -54,13 +55,24 @@ Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 10)
 local TitleText = Instance.new("TextLabel")
 TitleText.Size = UDim2.new(1, 0, 1, 0)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "RoadHelper v5.1 | ULTIMATE"
+TitleText.Text = "A Long Flight v7.0 | ULTIMATE"
 TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
 TitleText.Font = Enum.Font.SourceSansBold
 TitleText.TextSize = 16
 TitleText.Parent = TitleBar
 
--- Перетаскивание окна
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -35, 0, 5)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.new(1,1,1)
+CloseBtn.Font = Enum.Font.SourceSansBold
+CloseBtn.Parent = TitleBar
+Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 6)
+CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+
+-- Перетаскивание
 local dragging, dragInput, dragStart, startPos
 TitleBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -73,9 +85,7 @@ TitleBar.InputBegan:Connect(function(input)
     end
 end)
 TitleBar.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
 end)
 UserInputService.InputChanged:Connect(function(input)
     if input == dragInput and dragging then
@@ -84,24 +94,7 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- Кнопка закрытия
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-CloseBtn.Position = UDim2.new(1, -35, 0, 5)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-CloseBtn.Text = "X"
-CloseBtn.TextColor3 = Color3.new(1,1,1)
-CloseBtn.Font = Enum.Font.SourceSansBold
-CloseBtn.TextSize = 14
-CloseBtn.Parent = TitleBar
-Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 6)
-CloseBtn.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
-end)
-
--- ============================================
--- ВКЛАДКИ
--- ============================================
+-- Вкладки
 local TabFrame = Instance.new("Frame")
 TabFrame.Size = UDim2.new(1, -10, 0, 30)
 TabFrame.Position = UDim2.new(0, 5, 0, 45)
@@ -116,24 +109,10 @@ ContentFrame.BorderSizePixel = 0
 ContentFrame.Parent = MainFrame
 Instance.new("UICorner", ContentFrame).CornerRadius = UDim.new(0, 8)
 
-local farmPage = Instance.new("Frame")
-farmPage.Size = UDim2.new(1, 0, 1, 0)
-farmPage.BackgroundTransparency = 1
-farmPage.Parent = ContentFrame
+local flyPage = Instance.new("Frame"); flyPage.Size = UDim2.new(1, 0, 1, 0); flyPage.BackgroundTransparency = 1; flyPage.Parent = ContentFrame
+local combatPage = Instance.new("Frame"); combatPage.Size = UDim2.new(1, 0, 1, 0); combatPage.BackgroundTransparency = 1; combatPage.Visible = false; combatPage.Parent = ContentFrame
+local espPage = Instance.new("Frame"); espPage.Size = UDim2.new(1, 0, 1, 0); espPage.BackgroundTransparency = 1; espPage.Visible = false; espPage.Parent = ContentFrame
 
-local tpPage = Instance.new("Frame")
-tpPage.Size = UDim2.new(1, 0, 1, 0)
-tpPage.BackgroundTransparency = 1
-tpPage.Visible = false
-tpPage.Parent = ContentFrame
-
-local gfxPage = Instance.new("Frame")
-gfxPage.Size = UDim2.new(1, 0, 1, 0)
-gfxPage.BackgroundTransparency = 1
-gfxPage.Visible = false
-gfxPage.Parent = ContentFrame
-
--- Кнопки вкладок
 local function makeTabBtn(text, xPos, page)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0.31, 0, 1, 0)
@@ -146,16 +125,16 @@ local function makeTabBtn(text, xPos, page)
     btn.Parent = TabFrame
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
     btn.MouseButton1Click:Connect(function()
-        farmPage.Visible = false; tpPage.Visible = false; gfxPage.Visible = false
+        flyPage.Visible = false; combatPage.Visible = false; espPage.Visible = false
         page.Visible = true
     end)
 end
-makeTabBtn("🏎 Фарм", 0.02, farmPage)
-makeTabBtn("🚀 ТП", 0.34, tpPage)
-makeTabBtn("🛠 Графика", 0.66, gfxPage)
+makeTabBtn("✈ Полёт", 0.02, flyPage)
+makeTabBtn("🔫 Бой", 0.34, combatPage)
+makeTabBtn("👁 ESP", 0.66, espPage)
 
 -- ============================================
--- 1. ФАРМ (АВТО-ПОЛЁТ С ПАУЗОЙ)
+-- 1. ВКЛАДКА ПОЛЁТ
 -- ============================================
 local FlyBtn = Instance.new("TextButton")
 FlyBtn.Size = UDim2.new(1, -10, 0, 40)
@@ -164,20 +143,198 @@ FlyBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 FlyBtn.TextColor3 = Color3.new(1, 1, 1)
 FlyBtn.Font = Enum.Font.SourceSansBold
 FlyBtn.TextSize = 16
-FlyBtn.Text = "▶ ВКЛЮЧИТЬ АВТО-ПОЛЁТ"
-FlyBtn.Parent = farmPage
+FlyBtn.Text = "▶ ВКЛЮЧИТЬ ПОЛЁТ (По камере)"
+FlyBtn.Parent = flyPage
 Instance.new("UICorner", FlyBtn).CornerRadius = UDim.new(0, 6)
 
-local StatusText = Instance.new("TextLabel")
-StatusText.Size = UDim2.new(1, -10, 0, 20)
-StatusText.Position = UDim2.new(0, 5, 0, 50)
-StatusText.BackgroundTransparency = 1
-StatusText.TextColor3 = Color3.fromRGB(200, 200, 200)
-StatusText.Font = Enum.Font.Code
-StatusText.TextSize = 12
-StatusText.Text = "Статус: Ожидание"
-StatusText.Parent = farmPage
+local SpeedLabel = Instance.new("TextLabel")
+SpeedLabel.Size = UDim2.new(1, -10, 0, 20)
+SpeedLabel.Position = UDim2.new(0, 5, 0, 50)
+SpeedLabel.BackgroundTransparency = 1
+SpeedLabel.Text = "Скорость: 50"
+SpeedLabel.TextColor3 = Color3.new(1, 1, 1)
+SpeedLabel.Font = Enum.Font.SourceSansBold
+SpeedLabel.TextSize = 13
+SpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
+SpeedLabel.Parent = flyPage
 
+local SpeedSlider = Instance.new("TextButton") -- Используем кнопку вместо слайдера для простоты
+SpeedSlider.Size = UDim2.new(1, -10, 0, 30)
+SpeedSlider.Position = UDim2.new(0, 5, 0, 75)
+SpeedSlider.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+SpeedSlider.TextColor3 = Color3.fromRGB(255, 200, 60)
+SpeedSlider.Font = Enum.Font.SourceSansBold
+SpeedSlider.Text = "Изменить скорость (50 -> 100 -> 200 -> 500)"
+SpeedSlider.Parent = flyPage
+Instance.new("UICorner", SpeedSlider).CornerRadius = UDim.new(0, 4)
+
+local speeds = {50, 100, 200, 500}
+local speedIndex = 1
+SpeedSlider.MouseButton1Click:Connect(function()
+    speedIndex = speedIndex + 1
+    if speedIndex > #speeds then speedIndex = 1 end
+    flySpeed = speeds[speedIndex]
+    SpeedLabel.Text = "Скорость: " .. flySpeed
+end)
+
+-- God Mode
+local GodBtn = Instance.new("TextButton")
+GodBtn.Size = UDim2.new(1, -10, 0, 40)
+GodBtn.Position = UDim2.new(0, 5, 0, 115)
+GodBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+GodBtn.TextColor3 = Color3.new(1, 1, 1)
+GodBtn.Font = Enum.Font.SourceSansBold
+GodBtn.TextSize = 14
+GodBtn.Text = "🛡 God Mode: ВЫКЛ"
+GodBtn.Parent = flyPage
+Instance.new("UICorner", GodBtn).CornerRadius = UDim.new(0, 6)
+
+GodBtn.MouseButton1Click:Connect(function()
+    godModeEnabled = not godModeEnabled
+    if godModeEnabled then
+        GodBtn.Text = "🛡 God Mode: ВКЛ"
+        GodBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+    else
+        GodBtn.Text = "🛡 God Mode: ВЫКЛ"
+        GodBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    end
+end)
+
+-- ============================================
+-- 2. ВКЛАДКА БОЙ
+-- ============================================
+local TriggerBtn = Instance.new("TextButton")
+TriggerBtn.Size = UDim2.new(1, -10, 0, 40)
+TriggerBtn.Position = UDim2.new(0, 5, 0, 5)
+TriggerBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+TriggerBtn.TextColor3 = Color3.new(1, 1, 1)
+TriggerBtn.Font = Enum.Font.SourceSansBold
+TriggerBtn.TextSize = 16
+TriggerBtn.Text = "🔫 Триггер: ВЫКЛ"
+TriggerBtn.Parent = combatPage
+Instance.new("UICorner", TriggerBtn).CornerRadius = UDim.new(0, 6)
+
+TriggerBtn.MouseButton1Click:Connect(function()
+    triggerEnabled = not triggerEnabled
+    if triggerEnabled then
+        TriggerBtn.Text = "🔫 Триггер: ВКЛ"
+        TriggerBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+    else
+        TriggerBtn.Text = "🔫 Триггер: ВЫКЛ"
+        TriggerBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    end
+end)
+
+local AimBtn = Instance.new("TextButton")
+AimBtn.Size = UDim2.new(1, -10, 0, 40)
+AimBtn.Position = UDim2.new(0, 5, 0, 50)
+AimBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+AimBtn.TextColor3 = Color3.new(1, 1, 1)
+AimBtn.Font = Enum.Font.SourceSansBold
+AimBtn.TextSize = 16
+AimBtn.Text = "🎯 Аимбот: ВЫКЛ"
+AimBtn.Parent = combatPage
+Instance.new("UICorner", AimBtn).CornerRadius = UDim.new(0, 6)
+
+AimBtn.MouseButton1Click:Connect(function()
+    aimEnabled = not aimEnabled
+    if aimEnabled then
+        AimBtn.Text = "🎯 Аимбот: ВКЛ"
+        AimBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+    else
+        AimBtn.Text = "🎯 Аимбот: ВЫКЛ"
+        AimBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    end
+end)
+
+-- ============================================
+-- 3. ВКЛАДКА ESP
+-- ============================================
+local EspPlayerBtn = Instance.new("TextButton")
+EspPlayerBtn.Size = UDim2.new(1, -10, 0, 40)
+EspPlayerBtn.Position = UDim2.new(0, 5, 0, 5)
+EspPlayerBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+EspPlayerBtn.TextColor3 = Color3.new(1, 1, 1)
+EspPlayerBtn.Font = Enum.Font.SourceSansBold
+EspPlayerBtn.TextSize = 16
+EspPlayerBtn.Text = "👤 ESP Игроков: ВЫКЛ"
+EspPlayerBtn.Parent = espPage
+Instance.new("UICorner", EspPlayerBtn).Radius = UDim.new(0, 6)
+
+EspPlayerBtn.MouseButton1Click:Connect(function()
+    espPlayersEnabled = not espPlayersEnabled
+    if espPlayersEnabled then
+        EspPlayerBtn.Text = "👤 ESP Игроков: ВКЛ"
+        EspPlayerBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+    else
+        EspPlayerBtn.Text = "👤 ESP Игроков: ВЫКЛ"
+        EspPlayerBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        -- Очистка
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr.Character then
+                local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local box = hrp:FindFirstChild("ESP_Box")
+                    if box then box:Destroy() end
+                end
+            end
+        end
+    end
+end)
+
+local EspBotBtn = Instance.new("TextButton")
+EspBotBtn.Size = UDim2.new(1, -10, 0, 40)
+EspBotBtn.Position = UDim2.new(0, 5, 0, 50)
+EspBotBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+EspBotBtn.TextColor3 = Color3.new(1, 1, 1)
+EspBotBtn.Font = Enum.Font.SourceSansBold
+EspBotBtn.TextSize = 16
+EspBotBtn.Text = "🤖 ESP Ботов: ВЫКЛ"
+EspBotBtn.Parent = espPage
+Instance.new("UICorner", EspBotBtn).CornerRadius = UDim.new(0, 6)
+
+EspBotBtn.MouseButton1Click:Connect(function()
+    espBotsEnabled = not espBotsEnabled
+    if espBotsEnabled then
+        EspBotBtn.Text = "🤖 ESP Ботов: ВКЛ"
+        EspBotBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+        task.spawn(function()
+            while espBotsEnabled do
+                task.wait(2)
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if obj:IsA("Model") then
+                        local hum = obj:FindFirstChildOfClass("Humanoid")
+                        if hum and hum.Health > 0 and not Players:GetPlayerFromCharacter(obj) then
+                            if not obj:FindFirstChild("BotESP") then
+                                local part = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head")
+                                if part then
+                                    local box = Instance.new("BoxHandleAdornment")
+                                    box.Name = "BotESP"
+                                    box.Size = Vector3.new(3, 5, 3)
+                                    box.Adornee = part
+                                    box.AlwaysOnTop = true
+                                    box.Color3 = Color3.fromRGB(255, 50, 50)
+                                    box.Transparency = 0.4
+                                    box.Parent = part
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    else
+        EspBotBtn.Text = "🤖 ESP Ботов: ВЫКЛ"
+        EspBotBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj.Name == "BotESP" then obj:Destroy() end
+        end
+    end
+end)
+
+-- ============================================
+-- ЛОГИКА (Полёт, God, Триггер, Аим)
+-- ============================================
 local flyLinear, flyAttachment
 
 local function createFlyVelocity(hrp)
@@ -195,161 +352,31 @@ FlyBtn.MouseButton1Click:Connect(function()
     if flyEnabled then
         FlyBtn.Text = "🛑 ОСТАНОВИТЬ ПОЛЁТ"
         FlyBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-        StatusText.Text = "Статус: Летим..."
-        flyTimeCounter = 0
         isPaused = false
+        flyTimeCounter = 0
         local char = LocalPlayer.Character
         if char then
             local hrp = char:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                hrp.CFrame = CFrame.new(roadX, roadY, roadZ)
-                createFlyVelocity(hrp)
-            end
+            if hrp then createFlyVelocity(hrp) end
         end
     else
-        FlyBtn.Text = "▶ ВКЛЮЧИТЬ АВТО-ПОЛЁТ"
+        FlyBtn.Text = "▶ ВКЛЮЧИТЬ ПОЛЁТ (По камере)"
         FlyBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-        StatusText.Text = "Статус: Остановлено"
         if flyLinear then flyLinear:Destroy() flyLinear = nil end
         if flyAttachment then flyAttachment:Destroy() flyAttachment = nil end
     end
 end)
 
--- Кнопки скоростей
-local speeds = {1000, 2500, 5000, 10000, 50000, 100000}
-for i, spd in ipairs(speeds) do
-    local sBtn = Instance.new("TextButton")
-    sBtn.Size = UDim2.new(0.31, 0, 0, 30)
-    sBtn.Position = UDim2.new(0.02 + ((i-1)%3)*0.34, 0, 0, 75 + math.floor((i-1)/3)*35)
-    sBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    sBtn.TextColor3 = Color3.fromRGB(255, 200, 60)
-    sBtn.Font = Enum.Font.SourceSansBold
-    sBtn.TextSize = 13
-    sBtn.Text = spd >= 1000 and (spd/1000) .. "K" or tostring(spd)
-    sBtn.Parent = farmPage
-    Instance.new("UICorner", sBtn).CornerRadius = UDim.new(0, 4)
-    sBtn.MouseButton1Click:Connect(function()
-        flySpeed = spd
-        sBtn.TextColor3 = Color3.fromRGB(0, 255, 120)
-        task.delay(0.2, function() sBtn.TextColor3 = Color3.fromRGB(255, 200, 60) end)
-    end)
-end
-
--- ============================================
--- 2. УМНЫЙ ТП
--- ============================================
-local TpBtn = Instance.new("TextButton")
-TpBtn.Size = UDim2.new(1, -10, 0, 40)
-TpBtn.Position = UDim2.new(0, 5, 0, 5)
-TpBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-TpBtn.TextColor3 = Color3.new(1, 1, 1)
-TpBtn.Font = Enum.Font.SourceSansBold
-TpBtn.TextSize = 16
-TpBtn.Text = "🚀 УМНЫЙ ТЕЛЕПОРТ (Шаг 10К)"
-TpBtn.Parent = tpPage
-Instance.new("UICorner", TpBtn).CornerRadius = UDim.new(0, 6)
-
-TpBtn.MouseButton1Click:Connect(function()
-    tpEnabled = not tpEnabled
-    if tpEnabled then
-        TpBtn.Text = "🛑 ОСТАНОВИТЬ ТЕЛЕПОРТ"
-        TpBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-        
-        local char = LocalPlayer.Character
-        if char then
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                local currentX = roadX
-                task.spawn(function()
-                    while tpEnabled do
-                        currentX = currentX + tpStep
-                        hrp.CFrame = CFrame.new(currentX, roadY, roadZ)
-                        hrp.Velocity = Vector3.new(0,0,0)
-                        task.wait(tpDelay)
-                    end
-                end)
-            end
-        end
-    else
-        TpBtn.Text = "🚀 УМНЫЙ ТЕЛЕПОРТ (Шаг 10К)"
-        TpBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-    end
-end)
-
-local ResetTpBtn = Instance.new("TextButton")
-ResetTpBtn.Size = UDim2.new(1, -10, 0, 30)
-ResetTpBtn.Position = UDim2.new(0, 5, 0, 50)
-ResetTpBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-ResetTpBtn.TextColor3 = Color3.fromRGB(0, 255, 120)
-ResetTpBtn.Font = Enum.Font.SourceSansBold
-ResetTpBtn.TextSize = 13
-ResetTpBtn.Text = "🔄 СБРОС НА СТАРТ (X:150)"
-ResetTpBtn.Parent = tpPage
-Instance.new("UICorner", ResetTpBtn).CornerRadius = UDim.new(0, 4)
-ResetTpBtn.MouseButton1Click:Connect(function()
-    tpEnabled = false
-    TpBtn.Text = "🚀 УМНЫЙ ТЕЛЕПОРТ (Шаг 10К)"
-    TpBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-    local char = LocalPlayer.Character
-    if char and char:FindFirstChild("HumanoidRootPart") then
-        char.HumanoidRootPart.CFrame = CFrame.new(roadX, roadY, roadZ)
-    end
-end)
-
--- ============================================
--- 3. ГРАФИКА
--- ============================================
-local FpsBtn = Instance.new("TextButton")
-FpsBtn.Size = UDim2.new(1, -10, 0, 40)
-FpsBtn.Position = UDim2.new(0, 5, 0, 5)
-FpsBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 200)
-FpsBtn.TextColor3 = Color3.new(1, 1, 1)
-FpsBtn.Font = Enum.Font.SourceSansBold
-FpsBtn.TextSize = 16
-FpsBtn.Text = "🚀 УЛЬТРА FPS BOOST (УБИТЬ ГРАФИКУ)"
-FpsBtn.Parent = gfxPage
-Instance.new("UICorner", FpsBtn).CornerRadius = UDim.new(0, 6)
-
-FpsBtn.MouseButton1Click:Connect(function()
-    FpsBtn.Text = "🚀 ГРАФИКА УБИТА (ПЕРЕЗАЙДИ)"
-    FpsBtn.BackgroundColor3 = Color3.fromRGB(100, 0, 100)
-    Lighting.Brightness = 0
-    Lighting.ClockTime = 12
-    Lighting.FogEnd = 10000000
-    Lighting.FogStart = 10000000
-    Lighting.GlobalShadows = false
-    Lighting.OutdoorAmbient = Color3.fromRGB(0, 0, 0)
-    for _, obj in pairs(Lighting:GetChildren()) do
-        if obj:IsA("PostEffect") or obj:IsA("Sky") or obj:IsA("Atmosphere") or obj:IsA("Clouds") then
-            obj:Destroy()
-        end
-    end
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("BasePart") then
-            obj.Material = Enum.Material.SmoothPlastic
-            obj.Reflectance = 0
-            obj.CastShadow = false
-        elseif obj:IsA("Decal") or obj:IsA("Texture") then
-            obj:Destroy()
-        elseif obj:IsA("ParticleEmitter") or obj:IsA("Smoke") or obj:IsA("Fire") or obj:IsA("Sparkles") then
-            obj:Destroy()
-        end
-    end
-end)
-
--- ============================================
--- ЛОГИКА (Полёт с паузой + FPS)
--- ============================================
+-- Полёт + Пауза
 RunService.RenderStepped:Connect(function(dt)
     if not flyEnabled then return end
     local char = LocalPlayer.Character
     if not char then return end
+    local cam = workspace.CurrentCamera
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
 
-    if not flyLinear or not flyLinear.Parent then
-        createFlyVelocity(hrp)
-    end
+    if not flyLinear or not flyLinear.Parent then createFlyVelocity(hrp) end
 
     -- Логика паузы для прогрузки карты
     if not isPaused then
@@ -357,77 +384,136 @@ RunService.RenderStepped:Connect(function(dt)
         if flyTimeCounter >= 10 then
             isPaused = true
             flyTimeCounter = 0
-            StatusText.Text = "Статус: ПАУЗА (Прогрузка...)"
-            flyLinear.VectorVelocity = Vector3.new(0, 0, 0) -- Стоп
-            task.delay(2, function()
-                if flyEnabled then
-                    isPaused = false
-                    StatusText.Text = "Статус: Летим..."
-                end
-            end)
+            flyLinear.VectorVelocity = Vector3.new(0, 0, 0)
+            task.delay(2, function() if flyEnabled then isPaused = false end end)
         end
     end
 
     if not isPaused then
-        -- Летим вперед по X
-        flyLinear.VectorVelocity = Vector3.new(flySpeed, 0, 0)
+        local camLook = cam.CFrame.LookVector
+        flyLinear.VectorVelocity = camLook * flySpeed
     end
-    
-    -- Держим высоту
-    hrp.CFrame = CFrame.new(hrp.Position.X, roadY, roadZ)
 end)
 
--- ============================================
--- HUD (Координаты + FPS в углу)
--- ============================================
-local HudFrame = Instance.new("Frame")
-HudFrame.Size = UDim2.new(0, 240, 0, 50)
-HudFrame.Position = UDim2.new(0, 10, 0, 40)
-HudFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-HudFrame.BackgroundTransparency = 0.3
-HudFrame.BorderSizePixel = 0
-HudFrame.Parent = ScreenGui
-Instance.new("UICorner", HudFrame).CornerRadius = UDim.new(0, 6)
+-- God Mode (Блокировка урона + Атрибуты)
+local function applyGodMode(char)
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    if not hum:GetAttribute("GodModeHooked") then
+        local oldTakeDamage = hum.TakeDamage
+        hum.TakeDamage = function(self, amount) if godModeEnabled then return end return oldTakeDamage(self, amount) end
+        hum:SetAttribute("GodModeHooked", true)
+    end
+end
 
-local CoordsText = Instance.new("TextLabel")
-CoordsText.Size = UDim2.new(1, 0, 0.6, 0)
-CoordsText.BackgroundTransparency = 1
-CoordsText.TextColor3 = Color3.fromRGB(0, 255, 120)
-CoordsText.Font = Enum.Font.Code
-CoordsText.TextSize = 14
-CoordsText.Text = "X: 0  Y: 0  Z: 0"
-CoordsText.Parent = HudFrame
+LocalPlayer.CharacterAdded:Connect(function(char) task.wait(1); applyGodMode(char) end)
 
-local FpsText = Instance.new("TextLabel")
-FpsText.Size = UDim2.new(1, 0, 0.4, 0)
-FpsText.Position = UDim2.new(0, 0, 0.6, 0)
-FpsText.BackgroundTransparency = 1
-FpsText.TextColor3 = Color3.fromRGB(255, 200, 60)
-FpsText.Font = Enum.Font.Code
-FpsText.TextSize = 13
-FpsText.Text = "FPS: —"
-FpsText.Parent = HudFrame
-
--- Счётчик FPS
-local fpsCount, fpsTime = 0, tick()
-RunService.RenderStepped:Connect(function()
-    fpsCount = fpsCount + 1
+RunService.Heartbeat:Connect(function()
+    if not godModeEnabled then return end
+    local char = LocalPlayer.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum and hum.Health < hum.MaxHealth then hum.Health = hum.MaxHealth end
+    end
+    pcall(function()
+        LocalPlayer:SetAttribute("Hunger", 100)
+        LocalPlayer:SetAttribute("Thirst", 100)
+        LocalPlayer:SetAttribute("Energy", 100)
+    end)
 end)
 
-task.spawn(function()
-    while task.wait(0.5) do
-        if not ScreenGui.Parent then break end
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            local p = char.HumanoidRootPart.Position
-            CoordsText.Text = string.format("X: %d  Y: %d  Z: %d", math.floor(p.X), math.floor(p.Y), math.floor(p.Z))
+-- Триггер
+local function checkCrosshair()
+    local cam = workspace.CurrentCamera
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+    rayParams.FilterDescendantsInstances = { LocalPlayer.Character }
+    local result = workspace:Raycast(cam.CFrame.Position, cam.CFrame.LookVector * triggerRange, rayParams)
+    if result and result.Instance then
+        local parentModel = result.Instance:FindFirstAncestorOfClass("Model")
+        if parentModel then
+            local hum = parentModel:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 and not Players:GetPlayerFromCharacter(parentModel) then return true end
         end
-        
-        -- Обновляем FPS раз в секунду
-        if tick() - fpsTime >= 1 then
-            FpsText.Text = "FPS: " .. fpsCount
-            fpsCount = 0
-            fpsTime = tick()
+    end
+    return false
+end
+
+RunService.RenderStepped:Connect(function(dt)
+    if not triggerEnabled then return end
+    triggerCooldown = triggerCooldown - dt
+    if triggerCooldown > 0 then return end
+    if checkCrosshair() then
+        local char = LocalPlayer.Character
+        if char then
+            local tool = char:FindFirstChildWhichIsA("Tool")
+            if tool then pcall(function() tool:Activate() end) end
+        end
+        triggerCooldown = triggerDelay
+    end
+end)
+
+-- Аимбот (камера)
+RunService:BindToRenderStep("AimbotCamera", Enum.RenderPriority.Camera.Value + 1, function()
+    if not aimEnabled then return end
+    local cam = workspace.CurrentCamera
+    local closest, dist = nil, 300
+    local center = Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2)
+    
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then
+            local head = plr.Character:FindFirstChild("Head")
+            if head then
+                local sp, on = cam:WorldToViewportPoint(head.Position)
+                if on then
+                    local d = (Vector2.new(sp.X, sp.Y) - center).Magnitude
+                    if d < dist then dist = d; closest = head end
+                end
+            end
+        end
+    end
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and not Players:GetPlayerFromCharacter(obj) then
+            local hum = obj:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 then
+                local part = obj:FindFirstChild("Head") or obj:FindFirstChild("HumanoidRootPart")
+                if part then
+                    local sp, on = cam:WorldToViewportPoint(part.Position)
+                    if on then
+                        local d = (Vector2.new(sp.X, sp.Y) - center).Magnitude
+                        if d < dist then dist = d; closest = part end
+                    end
+                end
+            end
+        end
+    end
+
+    if closest then
+        cam.CFrame = cam.CFrame:Lerp(CFrame.new(cam.CFrame.Position, closest.Position), 0.2)
+    end
+end)
+
+-- ESP Игроков
+task.spawn(function()
+    while task.wait(1) do
+        if not ScreenGui.Parent then break end
+        if espPlayersEnabled then
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr ~= LocalPlayer and plr.Character then
+                    local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
+                    if hrp and not hrp:FindFirstChild("ESP_Box") then
+                        local box = Instance.new("BoxHandleAdornment")
+                        box.Name = "ESP_Box"
+                        box.Size = Vector3.new(3, 5.4, 3)
+                        box.Adornee = hrp
+                        box.AlwaysOnTop = true
+                        box.Color3 = Color3.fromRGB(255, 0, 0)
+                        box.Transparency = 0.5
+                        box.Parent = hrp
+                    end
+                end
+            end
         end
     end
 end)
